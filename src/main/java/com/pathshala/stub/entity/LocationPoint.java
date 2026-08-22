@@ -2,6 +2,7 @@ package com.pathshala.stub.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Entity
 @Table(name = "location_points")
@@ -17,9 +18,11 @@ public class LocationPoint {
     private double lat;
     private double lng;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Kolkata")
     @Column(name = "captured_at")
     private Instant capturedAt;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Kolkata")
     @Column(name = "received_at")
     private Instant receivedAt;
 
