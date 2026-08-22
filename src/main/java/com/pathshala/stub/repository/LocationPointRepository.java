@@ -26,4 +26,12 @@ public interface LocationPointRepository extends JpaRepository<LocationPoint, Lo
             @Param("userId") UUID userId,
             @Param("from")   Instant from,
             @Param("to")     Instant to);
+
+    /** Admin: Get the single most recent ping for every user. */
+    @Query(value = """
+            SELECT DISTINCT ON (user_id) *
+            FROM location_pings
+            ORDER BY user_id, captured_at DESC
+            """, nativeQuery = true)
+    List<LocationPoint> findLatestPingsPerUser();
 }
