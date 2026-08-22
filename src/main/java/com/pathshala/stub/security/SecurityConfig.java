@@ -39,6 +39,7 @@ public class SecurityConfig {
                 // ── Admin-only endpoints ───────────────────────────────
                 // Must come before the generic /api/admin/** rule so that
                 // /api/admin/auth/login (above) is matched first.
+                .requestMatchers("/api/admin/locations/**").hasRole("admin")
                 .requestMatchers("/api/admin/**").hasRole("admin")
 
                 // ── Field-app endpoints (supervisor or teacher) ────────

@@ -17,9 +17,9 @@ public interface LocationPointRepository extends JpaRepository<LocationPoint, Lo
      */
     @Query("""
             SELECT lp FROM LocationPoint lp
-            WHERE lp.userId = :userId
-              AND (:from IS NULL OR lp.capturedAt >= :from)
-              AND (:to   IS NULL OR lp.capturedAt <= :to)
+            WHERE (:userId IS NULL OR lp.userId = :userId)
+              AND (cast(:from as timestamp) IS NULL OR lp.capturedAt >= cast(:from as timestamp))
+              AND (cast(:to as timestamp) IS NULL OR lp.capturedAt <= cast(:to as timestamp))
             ORDER BY lp.capturedAt ASC
             """)
     List<LocationPoint> findByUserIdAndRange(

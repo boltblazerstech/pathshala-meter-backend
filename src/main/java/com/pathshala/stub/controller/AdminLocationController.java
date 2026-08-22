@@ -96,47 +96,75 @@ public class AdminLocationController {
         }).collect(Collectors.toList());
     }
 
-    @GetMapping("/history")
-    public List<AdminLiveLocationResponse> getLocationHistory(
-            @org.springframework.web.bind.annotation.RequestParam("userId") java.util.UUID userId,
-            @org.springframework.web.bind.annotation.RequestParam(value = "date", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date) {
+    /**
+     * GET /api/admin/locations
+     * Admin view of location data. Allows filtering by optional userId and date range.
+     * Omitting userId returns locations for all users.
+     */
+    @GetMapping
+    public List<AdminLiveLocationResponse> getLocations(
+            @org.springframework.web.bind.annotation.RequestParam(value = "user_id", required = false) java.util.UUID userId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate from,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate to) {
         
-        java.time.Instant from = null;
-        java.time.Instant to = null;
-        
-        if (date != null) {
-            java.time.ZoneId istZone = java.time.ZoneId.of("Asia/Kolkata");
-            from = date.atStartOfDay(istZone).toInstant();
-            to = date.plusDays(1).atStartOfDay(istZone).toInstant();
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new IllegalArgumentException("'from' date must not be after 'to' date");
         }
 
-        List<LocationPoint> history = locationRepository.findByUserIdAndRange(userId, from, to);
+        java.time.ZoneId istZone = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.Instant fromInstant = (from != null)
+                ? from.atStartOfDay(istZone).toInstant()
+                : null;
+        java.time.Instant toInstant = (to != null)
+                ? to.atTime(java.time.LocalTime.MAX).atZone(istZone).toInstant()
+                : null;
+
+        List<LocationPoint> history = locationRepository.findByUserIdAndRange(userId, fromInstant, toInstant);
         if (history.isEmpty()) return List.of();
 
-        User user = userRepository.findById(userId).orElse(null);
-        String userName = user != null ? user.getName() : "Unknown";
-        String userRole = user != null ? user.getRole() : "Unknown";
-        String pName = null;
+        // Batch fetch users to enrich
+        Set<java.util.UUID> userIds = history.stream().map(LocationPoint::getUserId).collect(Collectors.toSet());
+        Map<java.util.UUID, User> userMap = userRepository.findAllById(userIds)
+                .stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        if (user != null && user.getAssignedPaathshalaId() != null) {
-            pName = paathshalaRepository.findById(user.getAssignedPaathshalaId())
-                    .map(Paathshaala::getName).orElse(null);
-        }
-        
-        final String finalUserName = userName;
-        final String finalUserRole = userRole;
-        final String finalPName = pName;
+        // Batch fetch Paathshaalas
+        Set<java.util.UUID> paathshaalaIds = userMap.values().stream()
+                .map(User::getAssignedPaathshalaId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<java.util.UUID, Paathshaala> paathshaalaMap = paathshalaRepository.findAllById(paathshaalaIds)
+                .stream()
+                .collect(Collectors.toMap(Paathshaala::getId, Function.identity()));
 
-        return history.stream().map(ping -> new AdminLiveLocationResponse(
-                ping.getUserId(),
-                finalUserName,
-                finalUserRole,
-                finalPName,
-                ping.getLat(),
-                ping.getLng(),
-                ping.getCapturedAt(),
-                ping.getReceivedAt(),
-                ping.getSyncStatus()
-        )).collect(Collectors.toList());
+        return history.stream().map(ping -> {
+            User user = userMap.get(ping.getUserId());
+            String userName = "Unknown";
+            String userRole = "Unknown";
+            String pName = null;
+
+            if (user != null) {
+                userName = user.getName();
+                userRole = user.getRole();
+                if (user.getAssignedPaathshalaId() != null) {
+                    Paathshaala p = paathshaalaMap.get(user.getAssignedPaathshalaId());
+                    if (p != null) {
+                        pName = p.getName();
+                    }
+                }
+            }
+
+            return new AdminLiveLocationResponse(
+                    ping.getUserId(),
+                    userName,
+                    userRole,
+                    pName,
+                    ping.getLat(),
+                    ping.getLng(),
+                    ping.getCapturedAt(),
+                    ping.getReceivedAt(),
+                    ping.getSyncStatus()
+            );
+        }).collect(Collectors.toList());
     }
 }
