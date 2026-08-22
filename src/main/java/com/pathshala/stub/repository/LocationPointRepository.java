@@ -15,13 +15,13 @@ public interface LocationPointRepository extends JpaRepository<LocationPoint, Lo
      * GET /api/locations — all pings for a user, optionally bounded by a time range.
      * Both from and to are inclusive; pass null to leave that bound open.
      */
-    @Query("""
-            SELECT lp FROM LocationPoint lp
-            WHERE (:userId IS NULL OR lp.userId = :userId)
-              AND (cast(:from as timestamp) IS NULL OR lp.capturedAt >= cast(:from as timestamp))
-              AND (cast(:to as timestamp) IS NULL OR lp.capturedAt <= cast(:to as timestamp))
-            ORDER BY lp.capturedAt ASC
-            """)
+    @Query(value = """
+            SELECT * FROM location_pings lp
+            WHERE (cast(:userId as text)::uuid IS NULL OR lp.user_id = cast(:userId as text)::uuid)
+              AND (cast(:from as text)::timestamp IS NULL OR lp.captured_at >= cast(:from as text)::timestamp)
+              AND (cast(:to as text)::timestamp IS NULL OR lp.captured_at <= cast(:to as text)::timestamp)
+            ORDER BY lp.captured_at ASC
+            """, nativeQuery = true)
     List<LocationPoint> findByUserIdAndRange(
             @Param("userId") UUID userId,
             @Param("from")   Instant from,
