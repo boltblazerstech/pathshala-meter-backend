@@ -53,6 +53,12 @@
             <version>4.0.0</version>
         </dependency>
 
+        <!-- Flyway — owns all schema changes from here on -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
         <!-- JWT (JJWT 0.12.x) -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

@@ -5,7 +5,7 @@ import java.time.Instant;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Entity
-@Table(name = "location_points")
+@Table(name = "location_pings")
 public class LocationPoint {
 
     @Id
