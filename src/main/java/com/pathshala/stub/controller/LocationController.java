@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -23,8 +24,8 @@ public class LocationController {
 
     @PostMapping("/batch")
     public BatchReceiveResponse batchReceive(@RequestBody List<LocationPointDto> dtos) {
-        String userId = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        
+        UUID userId = currentUserId();
+
         List<LocationPoint> points = dtos.stream().map(dto -> {
             LocationPoint point = new LocationPoint();
             point.setUserId(userId);
@@ -40,7 +41,13 @@ public class LocationController {
 
     @GetMapping
     public List<LocationPoint> getLocations() {
-        String userId = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return repository.findByUserIdOrderByCapturedAtAsc(userId);
+        return repository.findByUserIdOrderByCapturedAtAsc(currentUserId());
+    }
+
+    /** The JWT filter sets the principal to the user's UUID string (sub claim). */
+    private UUID currentUserId() {
+        String subject = (String) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+        return UUID.fromString(subject);
     }
 }

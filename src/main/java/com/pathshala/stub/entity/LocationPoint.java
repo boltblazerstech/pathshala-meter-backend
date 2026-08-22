@@ -2,6 +2,7 @@ package com.pathshala.stub.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Entity
@@ -12,8 +13,8 @@ public class LocationPoint {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id")
-    private String userId;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
     private double lat;
     private double lng;
@@ -33,8 +34,8 @@ public class LocationPoint {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
+    public UUID getUserId()              { return userId; }
+    public void setUserId(UUID userId)   { this.userId = userId; }
     public double getLat() { return lat; }
     public void setLat(double lat) { this.lat = lat; }
     public double getLng() { return lng; }
