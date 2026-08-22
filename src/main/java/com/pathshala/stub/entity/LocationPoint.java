@@ -3,8 +3,12 @@ package com.pathshala.stub.entity;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
-import com.fasterxml.jackson.annotation.JsonFormat;
 
+/**
+ * Maps to location_pings table.
+ * No Jackson annotations here — serialization is the responsibility of
+ * LocationPingResponse (the response DTO), not the JPA entity.
+ */
 @Entity
 @Table(name = "location_pings")
 public class LocationPoint {
@@ -16,32 +20,37 @@ public class LocationPoint {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Column(nullable = false)
     private double lat;
+
+    @Column(nullable = false)
     private double lng;
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Kolkata")
-    @Column(name = "captured_at")
+    @Column(name = "captured_at", nullable = false)
     private Instant capturedAt;
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Kolkata")
-    @Column(name = "received_at")
+    @Column(name = "received_at", nullable = false, updatable = false)
     private Instant receivedAt;
+
+    @Column(name = "sync_status", nullable = false)
+    private String syncStatus = "synced";
 
     @PrePersist
     protected void onCreate() {
         receivedAt = Instant.now();
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public UUID getUserId()              { return userId; }
-    public void setUserId(UUID userId)   { this.userId = userId; }
-    public double getLat() { return lat; }
-    public void setLat(double lat) { this.lat = lat; }
-    public double getLng() { return lng; }
-    public void setLng(double lng) { this.lng = lng; }
-    public Instant getCapturedAt() { return capturedAt; }
-    public void setCapturedAt(Instant capturedAt) { this.capturedAt = capturedAt; }
-    public Instant getReceivedAt() { return receivedAt; }
-    public void setReceivedAt(Instant receivedAt) { this.receivedAt = receivedAt; }
+    public Long    getId()          { return id; }
+    public UUID    getUserId()      { return userId; }
+    public double  getLat()         { return lat; }
+    public double  getLng()         { return lng; }
+    public Instant getCapturedAt()  { return capturedAt; }
+    public Instant getReceivedAt()  { return receivedAt; }
+    public String  getSyncStatus()  { return syncStatus; }
+
+    public void setUserId(UUID userId)             { this.userId    = userId; }
+    public void setLat(double lat)                 { this.lat       = lat; }
+    public void setLng(double lng)                 { this.lng       = lng; }
+    public void setCapturedAt(Instant capturedAt)  { this.capturedAt = capturedAt; }
+    public void setSyncStatus(String syncStatus)   { this.syncStatus = syncStatus; }
 }
