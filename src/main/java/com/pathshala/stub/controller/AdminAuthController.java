@@ -11,6 +11,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Admin login: email + bcrypt-hashed password stored in admin_users table.
@@ -53,6 +55,20 @@ public class AdminAuthController {
         );
         String token = jwtUtil.generateToken(admin.getId().toString(), claims);
         return ResponseEntity.ok(new LoginResponse(token));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getMe() {
+        String subject = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        AdminUser admin = adminUserRepository.findById(UUID.fromString(subject)).orElse(null);
+        if (admin == null) {
+            return unauthorized();
+        }
+        return ResponseEntity.ok(Map.of(
+                "id", admin.getId(),
+                "email", admin.getEmail(),
+                "role", "admin"
+        ));
     }
 
     private static ResponseEntity<?> unauthorized() {
