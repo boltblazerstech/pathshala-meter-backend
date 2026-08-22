@@ -26,7 +26,7 @@ public class User {
     private UUID assignedPaathshalaId;
 
     @Column(nullable = false)
-    private boolean active;
+    private boolean active = true;
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
@@ -36,6 +36,7 @@ public class User {
         createdAt = Instant.now();
     }
 
+    // ── Getters ──────────────────────────────────────────────────────
     public UUID getId()                    { return id; }
     public String getName()               { return name; }
     public String getPhoneNumber()        { return phoneNumber; }
@@ -43,4 +44,11 @@ public class User {
     public UUID getAssignedPaathshalaId() { return assignedPaathshalaId; }
     public boolean isActive()             { return active; }
     public Instant getCreatedAt()         { return createdAt; }
+
+    // ── Setters (needed for create and update operations) ─────────────
+    public void setName(String name)                               { this.name = name; }
+    public void setPhoneNumber(String phoneNumber)                 { this.phoneNumber = phoneNumber; }
+    public void setRole(String role)                               { this.role = role; }
+    public void setAssignedPaathshalaId(UUID assignedPaathshalaId){ this.assignedPaathshalaId = assignedPaathshalaId; }
+    public void setActive(boolean active)                          { this.active = active; }
 }
