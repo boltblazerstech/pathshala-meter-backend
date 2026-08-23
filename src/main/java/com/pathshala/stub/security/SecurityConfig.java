@@ -33,6 +33,7 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // ── Public endpoints (no JWT needed) ──────────────────
+                .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/api/auth/login").permitAll()
                 .requestMatchers("/api/admin/auth/login").permitAll()
 
@@ -45,6 +46,7 @@ public class SecurityConfig {
                 // ── Field-app endpoints (supervisor or teacher) ────────
                 .requestMatchers("/api/tracking-window").hasAnyRole("supervisor", "teacher")
                 .requestMatchers("/api/locations/**").hasAnyRole("supervisor", "teacher")
+                .requestMatchers("/api/field/**").hasAnyRole("supervisor", "teacher")
 
                 // ── Deny everything else by default ───────────────────
                 .anyRequest().authenticated()

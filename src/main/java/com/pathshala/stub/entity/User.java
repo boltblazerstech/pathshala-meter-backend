@@ -31,6 +31,9 @@ public class User {
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
+    @Column(name = "on_demand_requested_at")
+    private Instant onDemandRequestedAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
@@ -44,6 +47,7 @@ public class User {
     public UUID getAssignedPaathshalaId() { return assignedPaathshalaId; }
     public boolean isActive()             { return active; }
     public Instant getCreatedAt()         { return createdAt; }
+    public Instant getOnDemandRequestedAt() { return onDemandRequestedAt; }
 
     // ── Setters (needed for create and update operations) ─────────────
     public void setName(String name)                               { this.name = name; }
@@ -51,4 +55,5 @@ public class User {
     public void setRole(String role)                               { this.role = role; }
     public void setAssignedPaathshalaId(UUID assignedPaathshalaId){ this.assignedPaathshalaId = assignedPaathshalaId; }
     public void setActive(boolean active)                          { this.active = active; }
+    public void setOnDemandRequestedAt(Instant onDemandRequestedAt){ this.onDemandRequestedAt = onDemandRequestedAt; }
 }

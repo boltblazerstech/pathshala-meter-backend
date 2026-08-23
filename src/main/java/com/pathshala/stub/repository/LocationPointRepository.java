@@ -34,4 +34,12 @@ public interface LocationPointRepository extends JpaRepository<LocationPoint, Lo
             ORDER BY user_id, captured_at DESC
             """, nativeQuery = true)
     List<LocationPoint> findLatestPingsPerUser();
+
+    @Query(value = """
+            SELECT DISTINCT ON (user_id) *
+            FROM location_pings
+            WHERE user_id IN :userIds
+            ORDER BY user_id, captured_at DESC
+            """, nativeQuery = true)
+    List<LocationPoint> findLatestPingsForUsers(@Param("userIds") java.util.Collection<UUID> userIds);
 }

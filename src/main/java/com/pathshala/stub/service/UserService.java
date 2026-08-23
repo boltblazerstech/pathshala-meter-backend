@@ -19,11 +19,14 @@ public class UserService {
 
     private final UserRepository       userRepository;
     private final PaathshalaRepository paathshalaRepository;
+    private final com.pathshala.stub.repository.LocationPointRepository locationPointRepository;
 
     public UserService(UserRepository userRepository,
-                       PaathshalaRepository paathshalaRepository) {
+                       PaathshalaRepository paathshalaRepository,
+                       com.pathshala.stub.repository.LocationPointRepository locationPointRepository) {
         this.userRepository       = userRepository;
         this.paathshalaRepository = paathshalaRepository;
+        this.locationPointRepository = locationPointRepository;
     }
 
     // ── Supervisors ───────────────────────────────────────────────────
@@ -36,15 +39,22 @@ public class UserService {
         user.setRole("supervisor");
         user.setActive(true);
         // assignedPaathshalaId stays null for supervisors
-        return toSupervisorResponse(userRepository.save(user));
+        return toSupervisorResponse(userRepository.save(user), null);
     }
 
     @Transactional(readOnly = true)
     public PagedResponse<SupervisorResponse> findAllSupervisors(Pageable pageable) {
-        Page<SupervisorResponse> page = userRepository
-                .findByRoleOrderByCreatedAtDesc("supervisor", pageable)
-                .map(this::toSupervisorResponse);
-        return PagedResponse.of(page);
+        Page<User> page = userRepository.findByRoleOrderByCreatedAtDesc("supervisor", pageable);
+        
+        List<UUID> userIds = page.getContent().stream().map(User::getId).collect(Collectors.toList());
+        Map<UUID, com.pathshala.stub.entity.LocationPoint> latestLocations = userIds.isEmpty() ? Map.of() :
+            locationPointRepository.findLatestPingsForUsers(userIds).stream()
+                .collect(Collectors.toMap(com.pathshala.stub.entity.LocationPoint::getUserId, Function.identity()));
+
+        Page<SupervisorResponse> responsePage = page.map(u -> 
+            toSupervisorResponse(u, latestLocations.get(u.getId())));
+            
+        return PagedResponse.of(responsePage);
     }
 
     @Transactional
@@ -57,7 +67,7 @@ public class UserService {
         if (request.phoneNumber() != null && !request.phoneNumber().isBlank()) {
             user.setPhoneNumber(request.phoneNumber());
         }
-        return toSupervisorResponse(userRepository.save(user));
+        return toSupervisorResponse(userRepository.save(user), null);
     }
 
     @Transactional
@@ -85,7 +95,7 @@ public class UserService {
         user.setAssignedPaathshalaId(paathshaala.getId());
         user.setActive(true);
 
-        return toTeacherResponse(userRepository.save(user), paathshaala.getName());
+        return toTeacherResponse(userRepository.save(user), paathshaala.getName(), null);
     }
 
     @Transactional(readOnly = true)
@@ -103,12 +113,17 @@ public class UserService {
                 .findAllById(paathshalaIds)
                 .stream()
                 .collect(Collectors.toMap(Paathshaala::getId, Function.identity()));
+                
+        List<UUID> userIds = teacherPage.getContent().stream().map(User::getId).collect(Collectors.toList());
+        Map<UUID, com.pathshala.stub.entity.LocationPoint> latestLocations = userIds.isEmpty() ? Map.of() :
+            locationPointRepository.findLatestPingsForUsers(userIds).stream()
+                .collect(Collectors.toMap(com.pathshala.stub.entity.LocationPoint::getUserId, Function.identity()));
 
         Page<TeacherResponse> responsePage = teacherPage.map(teacher -> {
             Paathshaala p = teacher.getAssignedPaathshalaId() != null
                     ? paathshalaMap.get(teacher.getAssignedPaathshalaId())
                     : null;
-            return toTeacherResponse(teacher, p != null ? p.getName() : null);
+            return toTeacherResponse(teacher, p != null ? p.getName() : null, latestLocations.get(teacher.getId()));
         });
 
         return PagedResponse.of(responsePage);
@@ -143,7 +158,7 @@ public class UserService {
             }
         }
 
-        return toTeacherResponse(userRepository.save(user), paathshalaName);
+        return toTeacherResponse(userRepository.save(user), paathshalaName, null);
     }
 
     @Transactional
@@ -166,17 +181,20 @@ public class UserService {
         return user;
     }
 
-    private SupervisorResponse toSupervisorResponse(User user) {
+    private SupervisorResponse toSupervisorResponse(User user, com.pathshala.stub.entity.LocationPoint location) {
         return new SupervisorResponse(
                 user.getId(),
                 user.getName(),
                 user.getPhoneNumber(),
                 user.isActive(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                location != null ? location.getLat() : null,
+                location != null ? location.getLng() : null,
+                location != null ? location.getCapturedAt() : null
         );
     }
 
-    private TeacherResponse toTeacherResponse(User user, String paathshalaName) {
+    private TeacherResponse toTeacherResponse(User user, String paathshalaName, com.pathshala.stub.entity.LocationPoint location) {
         return new TeacherResponse(
                 user.getId(),
                 user.getName(),
@@ -184,7 +202,10 @@ public class UserService {
                 user.isActive(),
                 user.getAssignedPaathshalaId(),
                 paathshalaName,
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                location != null ? location.getLat() : null,
+                location != null ? location.getLng() : null,
+                location != null ? location.getCapturedAt() : null
         );
     }
 }

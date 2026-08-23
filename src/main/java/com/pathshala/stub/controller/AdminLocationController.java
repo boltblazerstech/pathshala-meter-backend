@@ -167,4 +167,23 @@ public class AdminLocationController {
             );
         }).collect(Collectors.toList());
     }
+
+    /**
+     * POST /api/admin/locations/request/{userId}
+     * Requests an on-demand location refresh from the given user's field app.
+     */
+    @org.springframework.web.bind.annotation.PostMapping("/request/{userId}")
+    public org.springframework.http.ResponseEntity<?> requestOnDemandLocation(
+            @org.springframework.web.bind.annotation.PathVariable("userId") java.util.UUID userId) {
+        
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return org.springframework.http.ResponseEntity.notFound().build();
+        }
+        
+        user.setOnDemandRequestedAt(java.time.Instant.now());
+        userRepository.save(user);
+        
+        return org.springframework.http.ResponseEntity.ok(Map.of("status", "requested", "userId", userId));
+    }
 }
