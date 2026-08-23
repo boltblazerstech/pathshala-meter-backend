@@ -22,13 +22,16 @@ public class PaathshalaService {
     private final PaathshalaRepository paathshalaRepository;
     private final UserRepository       userRepository;
     private final MapLinkParser        mapLinkParser;
+    private final GeocodeService       geocodeService;
 
     public PaathshalaService(PaathshalaRepository paathshalaRepository,
                              UserRepository userRepository,
-                             MapLinkParser mapLinkParser) {
+                             MapLinkParser mapLinkParser,
+                             GeocodeService geocodeService) {
         this.paathshalaRepository = paathshalaRepository;
         this.userRepository       = userRepository;
         this.mapLinkParser        = mapLinkParser;
+        this.geocodeService       = geocodeService;
     }
 
     @Transactional
@@ -69,6 +72,8 @@ public class PaathshalaService {
             entity.setCoordinateConfidence("unresolved");
         }
 
+        resolveAddress(entity);
+
         return toResponse(paathshalaRepository.save(entity));
     }
 
@@ -89,11 +94,14 @@ public class PaathshalaService {
             entity.setName(request.name());
         }
 
+        boolean locationChanged = false;
+
         // Priority 1: Manual lat/lng takes precedence
         if (request.lat() != null && request.lng() != null) {
             entity.setLatitude(request.lat());
             entity.setLongitude(request.lng());
             entity.setCoordinateConfidence("manual");
+            locationChanged = true;
             // Still update the map link if provided, for reference
             if (request.mapLink() != null && !request.mapLink().isBlank()) {
                 entity.setSourceMapLink(request.mapLink());
@@ -107,6 +115,7 @@ public class PaathshalaService {
                 entity.setLatitude(coord.lat());
                 entity.setLongitude(coord.lng());
                 entity.setCoordinateConfidence(coord.confidence());
+                locationChanged = true;
             } catch (Exception e) {
                 log.warn("Failed to parse updated map link for paathshaala '{}': {}",
                         entity.getName(), e.getMessage());
@@ -114,7 +123,10 @@ public class PaathshalaService {
                 entity.setCoordinateConfidence("unresolved");
             }
         }
-        // If neither mapLink nor lat/lng provided, coordinates stay as-is
+        
+        if (locationChanged) {
+            resolveAddress(entity);
+        }
 
         return toResponse(paathshalaRepository.save(entity));
     }
@@ -134,6 +146,15 @@ public class PaathshalaService {
 
         paathshalaRepository.deleteById(id);
     }
+    
+    private void resolveAddress(Paathshaala entity) {
+        if (entity.getLatitude() != null && entity.getLongitude() != null) {
+            GeocodeResult geocodeResult = geocodeService.reverseGeocode(entity.getLatitude(), entity.getLongitude());
+            if (geocodeResult.address() != null) {
+                entity.setAddress(geocodeResult.address());
+            }
+        }
+    }
 
     // ── Mapping ──────────────────────────────────────────────────────
     private PaathshalaResponse toResponse(Paathshaala p) {
@@ -142,6 +163,7 @@ public class PaathshalaService {
                 p.getName(),
                 p.getLatitude(),
                 p.getLongitude(),
+                p.getAddress(),
                 p.getSourceMapLink(),
                 p.getCoordinateConfidence(),
                 p.getCreatedAt()

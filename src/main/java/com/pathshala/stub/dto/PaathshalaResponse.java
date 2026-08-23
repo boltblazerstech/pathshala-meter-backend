@@ -12,6 +12,7 @@ public record PaathshalaResponse(
         String name,
         Double lat,
         Double lng,
+        String address,
 
         @JsonProperty("source_map_link")
         String sourceMapLink,

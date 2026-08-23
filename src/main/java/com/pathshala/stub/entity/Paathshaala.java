@@ -22,6 +22,8 @@ public class Paathshaala {
     @Column(name = "source_map_link")
     private String sourceMapLink;
 
+    private String address;
+
     /**
      * "parsed"   = coordinate extracted cleanly from the map link.
      * "fallback" = only the viewport center was available — treat with caution.
@@ -42,6 +44,7 @@ public class Paathshaala {
     public Double getLatitude()              { return latitude; }
     public Double getLongitude()             { return longitude; }
     public String getSourceMapLink()         { return sourceMapLink; }
+    public String getAddress()               { return address; }
     public String getCoordinateConfidence()  { return coordinateConfidence; }
     public Instant getCreatedAt()            { return createdAt; }
 
@@ -49,5 +52,6 @@ public class Paathshaala {
     public void setLatitude(Double latitude)                   { this.latitude = latitude; }
     public void setLongitude(Double longitude)                 { this.longitude = longitude; }
     public void setSourceMapLink(String sourceMapLink)         { this.sourceMapLink = sourceMapLink; }
+    public void setAddress(String address)                     { this.address = address; }
     public void setCoordinateConfidence(String c)              { this.coordinateConfidence = c; }
 }
