@@ -19,7 +19,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/admin/locations")
+@RequestMapping("/api/admin")
 public class AdminLocationController {
 
     private final LocationPointRepository locationRepository;
@@ -39,7 +39,7 @@ public class AdminLocationController {
      * Returns the single most recent location ping for every user.
      * Enriched with user name, role, and assigned Paathshaala (if any).
      */
-    @GetMapping("/live")
+    @GetMapping("/locations/live")
     public List<AdminLiveLocationResponse> getLiveLocations() {
         // 1. Fetch the latest ping per user (DISTINCT ON user_id)
         List<LocationPoint> latestPings = locationRepository.findLatestPingsPerUser();
@@ -101,7 +101,7 @@ public class AdminLocationController {
      * Admin view of location data. Allows filtering by optional userId and date range.
      * Omitting userId returns locations for all users.
      */
-    @GetMapping
+    @GetMapping("/locations")
     public List<AdminLiveLocationResponse> getLocations(
             @org.springframework.web.bind.annotation.RequestParam(value = "user_id", required = false) java.util.UUID userId,
             @org.springframework.web.bind.annotation.RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate from,
@@ -169,10 +169,75 @@ public class AdminLocationController {
     }
 
     /**
+     * GET /api/admin/users/{userId}/locations/detail
+     * Gets a single user's detailed location track for a specific date,
+     * including distance to a target paathshaala.
+     */
+    @GetMapping("/users/{userId}/locations/detail")
+    public com.pathshala.stub.dto.UserLocationDetailResponse getUserLocationDetail(
+            @org.springframework.web.bind.annotation.PathVariable("userId") java.util.UUID userId,
+            @org.springframework.web.bind.annotation.RequestParam("date") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date,
+            @org.springframework.web.bind.annotation.RequestParam(value = "paathshaala_id", required = false) java.util.UUID paathshaalaIdParam) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        java.time.ZoneId istZone = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.Instant fromInstant = date.atStartOfDay(istZone).toInstant();
+        java.time.Instant toInstant = date.atTime(java.time.LocalTime.MAX).atZone(istZone).toInstant();
+
+        List<LocationPoint> pings = locationRepository.findByUserIdAndRange(userId, fromInstant, toInstant);
+        
+        // Ensure sorted by captured_at ASC
+        pings.sort(java.util.Comparator.comparing(LocationPoint::getCapturedAt));
+
+        java.util.UUID targetPaathshaalaId = null;
+        if ("teacher".equals(user.getRole())) {
+            targetPaathshaalaId = user.getAssignedPaathshalaId();
+        } else if ("supervisor".equals(user.getRole())) {
+            targetPaathshaalaId = paathshaalaIdParam;
+        }
+
+        Paathshaala targetPaathshaala = null;
+        if (targetPaathshaalaId != null) {
+            targetPaathshaala = paathshalaRepository.findById(targetPaathshaalaId).orElse(null);
+        }
+
+        String pName = targetPaathshaala != null ? targetPaathshaala.getName() : null;
+        Paathshaala finalTarget = targetPaathshaala;
+
+        List<com.pathshala.stub.dto.LocationPointDetailDto> points = pings.stream().map(ping -> {
+            Double distance = null;
+            if (finalTarget != null && finalTarget.getLatitude() != null && finalTarget.getLongitude() != null) {
+                distance = com.pathshala.stub.util.GeoUtils.haversineMeters(
+                        ping.getLat(), ping.getLng(),
+                        finalTarget.getLatitude(), finalTarget.getLongitude());
+            }
+            return new com.pathshala.stub.dto.LocationPointDetailDto(
+                    ping.getCapturedAt(),
+                    ping.getReceivedAt(),
+                    ping.getLat(),
+                    ping.getLng(),
+                    distance
+            );
+        }).collect(Collectors.toList());
+
+        return new com.pathshala.stub.dto.UserLocationDetailResponse(
+                user.getId(),
+                user.getName(),
+                user.getRole(),
+                date.toString(),
+                targetPaathshaalaId,
+                pName,
+                points
+        );
+    }
+
+    /**
      * POST /api/admin/locations/request/{userId}
      * Requests an on-demand location refresh from the given user's field app.
      */
-    @org.springframework.web.bind.annotation.PostMapping("/request/{userId}")
+    @org.springframework.web.bind.annotation.PostMapping("/locations/request/{userId}")
     public org.springframework.http.ResponseEntity<?> requestOnDemandLocation(
             @org.springframework.web.bind.annotation.PathVariable("userId") java.util.UUID userId) {
         
