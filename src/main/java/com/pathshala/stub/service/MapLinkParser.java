@@ -11,26 +11,33 @@ import java.util.regex.Pattern;
 /**
  * Parses a Google Maps link into lat/lng coordinates.
  *
- * Priority order:
- * 1. !1d{lng}!2d{lat} inside a data= parameter (Directions destination)
- * 2. q={lat},{lng} parameter (pin-drop share links)
- * 3. @{lat},{lng},{zoom} viewport pattern (fallback — lower confidence)
- * 4. Shortened URLs (maps.app.goo.gl, goo.gl/maps) → resolve redirect → re-run 1–3
- * 5. If nothing matches → throw IllegalArgumentException
+ * Priority order (all patterns extract an ATOMIC lat+lng pair from a
+ * single source — never one value from one pattern and the other from another):
+ *
+ * 1. !3d{lat}!4d{lng} inside a data= parameter (Place pin — most reliable)
+ * 2. !1d{lng}!2d{lat} inside a data= parameter (Directions destination)
+ * 3. q={lat},{lng} query parameter (pin-drop share links)
+ * 4. @{lat},{lng},{zoom} viewport pattern (fallback — lower confidence)
+ * 5. Shortened URLs (maps.app.goo.gl, goo.gl/maps) → resolve redirect → re-run 1–4
+ * 6. If nothing matches → throw IllegalArgumentException
  */
 @Service
 public class MapLinkParser {
 
-    // Pattern 1: !1d<longitude>!2d<latitude> in data= segments
+    // Pattern 1: !3d<latitude>!4d<longitude> in data= segments (Place pin)
+    private static final Pattern PLACE_PATTERN =
+            Pattern.compile("!3d(-?[\\d.]+)!4d(-?[\\d.]+)");
+
+    // Pattern 2: !1d<longitude>!2d<latitude> in data= segments (Directions)
     // The !1d value is longitude, !2d value is latitude
     private static final Pattern DATA_PATTERN =
             Pattern.compile("!1d(-?[\\d.]+)!2d(-?[\\d.]+)");
 
-    // Pattern 2: q=<lat>,<lng> query parameter
+    // Pattern 3: q=<lat>,<lng> query parameter
     private static final Pattern Q_PATTERN =
             Pattern.compile("[?&]q=(-?[\\d.]+),(-?[\\d.]+)");
 
-    // Pattern 3: @<lat>,<lng>,<zoom>z viewport
+    // Pattern 4: @<lat>,<lng>,<zoom>z viewport
     private static final Pattern VIEWPORT_PATTERN =
             Pattern.compile("@(-?[\\d.]+),(-?[\\d.]+),");
 
@@ -52,12 +59,20 @@ public class MapLinkParser {
 
         String url = mapLink.trim();
 
-        // Step 4: If shortened URL, resolve the redirect first
+        // Step 5: If shortened URL, resolve the redirect first
         if (isShortenedUrl(url)) {
             url = resolveRedirect(url);
         }
 
-        // Step 1: Look for !1d<lng>!2d<lat> in data= parameter
+        // Step 1: Look for !3d<lat>!4d<lng> (Place pin — most reliable)
+        Matcher placeMatcher = PLACE_PATTERN.matcher(url);
+        if (placeMatcher.find()) {
+            double lat = Double.parseDouble(placeMatcher.group(1));
+            double lng = Double.parseDouble(placeMatcher.group(2));
+            return new ParsedCoordinate(lat, lng, "parsed");
+        }
+
+        // Step 2: Look for !1d<lng>!2d<lat> in data= parameter (Directions)
         Matcher dataMatcher = DATA_PATTERN.matcher(url);
         if (dataMatcher.find()) {
             double lng = Double.parseDouble(dataMatcher.group(1));
@@ -65,7 +80,7 @@ public class MapLinkParser {
             return new ParsedCoordinate(lat, lng, "parsed");
         }
 
-        // Step 2: Look for q=<lat>,<lng>
+        // Step 3: Look for q=<lat>,<lng>
         Matcher qMatcher = Q_PATTERN.matcher(url);
         if (qMatcher.find()) {
             double lat = Double.parseDouble(qMatcher.group(1));
@@ -73,7 +88,7 @@ public class MapLinkParser {
             return new ParsedCoordinate(lat, lng, "parsed");
         }
 
-        // Step 3: Fallback to @<lat>,<lng>,<zoom> viewport
+        // Step 4: Fallback to @<lat>,<lng>,<zoom> viewport
         Matcher viewportMatcher = VIEWPORT_PATTERN.matcher(url);
         if (viewportMatcher.find()) {
             double lat = Double.parseDouble(viewportMatcher.group(1));

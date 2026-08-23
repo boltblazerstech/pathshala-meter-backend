@@ -15,6 +15,21 @@ class MapLinkParserTest {
         parser = new MapLinkParser();
     }
 
+    // ── Pattern 0: !3d<lat>!4d<lng> (Place pin) ───────────────
+
+    @Test
+    void placeLink_prioritizesPinOverViewport() {
+        // The exact URL from the bug report: contains BOTH @viewport (Balochistan) and !3d!4d (Vrindavan)
+        String link = "https://www.google.com/maps/place/Sri+Sri+Krishna+Balaram+Temple+(ISKCON+Vrindavan)/@27.5723085,67.9215296,6z/data=!4m7!3m6!1s0x39736e22b4da686f:0xb12573270e6273a1!8m2!3d27.5723085!4d77.677389!";
+
+        ParsedCoordinate result = parser.parseMapLink(link);
+
+        // Should extract Vrindavan coordinates from !3d/!4d, NOT Balochistan from @
+        assertEquals(27.5723085, result.lat(), 0.000001);
+        assertEquals(77.677389, result.lng(), 0.000001);
+        assertEquals("parsed", result.confidence());
+    }
+
     // ── Pattern 1: !1d<lng>!2d<lat> (Directions link) ────────────
 
     @Test
