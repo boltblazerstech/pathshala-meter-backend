@@ -55,4 +55,11 @@ public class AdminSupervisorController {
         userService.deactivateSupervisor(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/selected-paathshaala")
+    public SupervisorResponse updateSelectedPaathshaala(
+            @PathVariable UUID id,
+            @RequestBody UpdateSelectedPaathshaalaRequest request) {
+        return userService.updateSelectedPaathshaala(id, request);
+    }
 }

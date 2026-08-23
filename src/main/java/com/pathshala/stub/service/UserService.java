@@ -39,7 +39,7 @@ public class UserService {
         user.setRole("supervisor");
         user.setActive(true);
         // assignedPaathshalaId stays null for supervisors
-        return toSupervisorResponse(userRepository.save(user), null);
+        return toSupervisorResponse(userRepository.save(user), null, null, null);
     }
 
     @Transactional(readOnly = true)
@@ -51,8 +51,18 @@ public class UserService {
             locationPointRepository.findLatestPingsForUsers(userIds).stream()
                 .collect(Collectors.toMap(com.pathshala.stub.entity.LocationPoint::getUserId, Function.identity()));
 
-        Page<SupervisorResponse> responsePage = page.map(u -> 
-            toSupervisorResponse(u, latestLocations.get(u.getId())));
+        Set<UUID> paathshaalaIds = page.getContent().stream()
+                .map(User::getSelectedPaathshaalaId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        
+        Map<UUID, Paathshaala> paathshaalaMap = paathshalaRepository.findAllById(paathshaalaIds).stream()
+                .collect(Collectors.toMap(Paathshaala::getId, Function.identity()));
+
+        Page<SupervisorResponse> responsePage = page.map(u -> {
+            Paathshaala p = u.getSelectedPaathshaalaId() != null ? paathshaalaMap.get(u.getSelectedPaathshaalaId()) : null;
+            return toSupervisorResponse(u, p != null ? p.getName() : null, p, latestLocations.get(u.getId()));
+        });
             
         return PagedResponse.of(responsePage);
     }
@@ -67,13 +77,22 @@ public class UserService {
         if (request.phoneNumber() != null && !request.phoneNumber().isBlank()) {
             user.setPhoneNumber(request.phoneNumber());
         }
-        return toSupervisorResponse(userRepository.save(user), null);
+        
+        Paathshaala p = null;
+        if (user.getSelectedPaathshaalaId() != null) {
+            p = paathshalaRepository.findById(user.getSelectedPaathshaalaId()).orElse(null);
+        }
+        return toSupervisorResponse(userRepository.save(user), p != null ? p.getName() : null, p, null);
     }
 
     @Transactional(readOnly = true)
     public SupervisorResponse findSupervisorById(UUID id) {
         User user = findUserByIdAndRole(id, "supervisor");
-        return toSupervisorResponse(user, null);
+        Paathshaala p = null;
+        if (user.getSelectedPaathshaalaId() != null) {
+            p = paathshalaRepository.findById(user.getSelectedPaathshaalaId()).orElse(null);
+        }
+        return toSupervisorResponse(user, p != null ? p.getName() : null, p, null);
     }
 
     @Transactional
@@ -101,7 +120,7 @@ public class UserService {
         user.setAssignedPaathshalaId(paathshaala.getId());
         user.setActive(true);
 
-        return toTeacherResponse(userRepository.save(user), paathshaala.getName(), null);
+        return toTeacherResponse(userRepository.save(user), paathshaala.getName(), paathshaala, null);
     }
 
     @Transactional(readOnly = true)
@@ -129,7 +148,7 @@ public class UserService {
             Paathshaala p = teacher.getAssignedPaathshalaId() != null
                     ? paathshalaMap.get(teacher.getAssignedPaathshalaId())
                     : null;
-            return toTeacherResponse(teacher, p != null ? p.getName() : null, latestLocations.get(teacher.getId()));
+            return toTeacherResponse(teacher, p != null ? p.getName() : null, p, latestLocations.get(teacher.getId()));
         });
 
         return PagedResponse.of(responsePage);
@@ -147,24 +166,25 @@ public class UserService {
         }
 
         String paathshalaName = null;
+        Paathshaala p = null;
         if (request.paathshalaId() != null) {
-            Paathshaala paathshaala = paathshalaRepository
+            p = paathshalaRepository
                     .findById(request.paathshalaId())
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Paathshaala not found: " + request.paathshalaId()));
-            user.setAssignedPaathshalaId(paathshaala.getId());
-            paathshalaName = paathshaala.getName();
+            user.setAssignedPaathshalaId(p.getId());
+            paathshalaName = p.getName();
         } else {
             // paathshaala_id not in request — keep existing assignment
             if (user.getAssignedPaathshalaId() != null) {
-                paathshalaName = paathshalaRepository
-                        .findById(user.getAssignedPaathshalaId())
-                        .map(Paathshaala::getName)
-                        .orElse(null);
+                p = paathshalaRepository.findById(user.getAssignedPaathshalaId()).orElse(null);
+                if (p != null) {
+                    paathshalaName = p.getName();
+                }
             }
         }
 
-        return toTeacherResponse(userRepository.save(user), paathshalaName, null);
+        return toTeacherResponse(userRepository.save(user), paathshalaName, p, null);
     }
 
     @Transactional
@@ -178,13 +198,38 @@ public class UserService {
     public TeacherResponse findTeacherById(UUID id) {
         User user = findUserByIdAndRole(id, "teacher");
         String paathshalaName = null;
+        Paathshaala p = null;
         if (user.getAssignedPaathshalaId() != null) {
-            paathshalaName = paathshalaRepository
-                    .findById(user.getAssignedPaathshalaId())
-                    .map(Paathshaala::getName)
-                    .orElse(null);
+            p = paathshalaRepository.findById(user.getAssignedPaathshalaId()).orElse(null);
+            if (p != null) {
+                paathshalaName = p.getName();
+            }
         }
-        return toTeacherResponse(user, paathshalaName, null);
+        return toTeacherResponse(user, paathshalaName, p, null);
+    }
+
+    @Transactional
+    public SupervisorResponse updateSelectedPaathshaala(UUID id, UpdateSelectedPaathshaalaRequest request) {
+        User user = findUserByIdAndRole(id, "supervisor");
+
+        String paathshaalaName = null;
+        Paathshaala paathshaala = null;
+        if (request.paathshaalaId() != null) {
+            paathshaala = paathshalaRepository.findById(request.paathshaalaId())
+                    .orElseThrow(() -> new IllegalArgumentException("Paathshaala not found: " + request.paathshaalaId()));
+            user.setSelectedPaathshaalaId(paathshaala.getId());
+            paathshaalaName = paathshaala.getName();
+        } else {
+            user.setSelectedPaathshaalaId(null);
+        }
+
+        userRepository.save(user);
+        
+        // Fetch latest location to map response
+        List<com.pathshala.stub.entity.LocationPoint> latestPings = locationPointRepository.findLatestPingsForUsers(List.of(user.getId()));
+        com.pathshala.stub.entity.LocationPoint latestLoc = latestPings.isEmpty() ? null : latestPings.get(0);
+
+        return toSupervisorResponse(user, paathshaalaName, paathshaala, latestLoc);
     }
 
     // ── Private helpers ───────────────────────────────────────────────
@@ -200,7 +245,16 @@ public class UserService {
         return user;
     }
 
-    private SupervisorResponse toSupervisorResponse(User user, com.pathshala.stub.entity.LocationPoint location) {
+    private SupervisorResponse toSupervisorResponse(User user, String paathshaalaName, Paathshaala paathshaala, com.pathshala.stub.entity.LocationPoint location) {
+        Double distance = null;
+        if (location != null && paathshaala != null 
+            && paathshaala.getLatitude() != null && paathshaala.getLongitude() != null) {
+            distance = com.pathshala.stub.util.GeoUtils.haversineMeters(
+                    location.getLat(), location.getLng(),
+                    paathshaala.getLatitude(), paathshaala.getLongitude()
+            );
+        }
+
         return new SupervisorResponse(
                 user.getId(),
                 user.getName(),
@@ -209,11 +263,23 @@ public class UserService {
                 user.getCreatedAt(),
                 location != null ? location.getLat() : null,
                 location != null ? location.getLng() : null,
-                location != null ? location.getCapturedAt() : null
+                location != null ? location.getCapturedAt() : null,
+                user.getSelectedPaathshaalaId(),
+                paathshaalaName,
+                distance
         );
     }
 
-    private TeacherResponse toTeacherResponse(User user, String paathshalaName, com.pathshala.stub.entity.LocationPoint location) {
+    private TeacherResponse toTeacherResponse(User user, String paathshalaName, Paathshaala paathshaala, com.pathshala.stub.entity.LocationPoint location) {
+        Double distance = null;
+        if (location != null && paathshaala != null
+            && paathshaala.getLatitude() != null && paathshaala.getLongitude() != null) {
+            distance = com.pathshala.stub.util.GeoUtils.haversineMeters(
+                    location.getLat(), location.getLng(),
+                    paathshaala.getLatitude(), paathshaala.getLongitude()
+            );
+        }
+
         return new TeacherResponse(
                 user.getId(),
                 user.getName(),
@@ -224,7 +290,8 @@ public class UserService {
                 user.getCreatedAt(),
                 location != null ? location.getLat() : null,
                 location != null ? location.getLng() : null,
-                location != null ? location.getCapturedAt() : null
+                location != null ? location.getCapturedAt() : null,
+                distance
         );
     }
 }

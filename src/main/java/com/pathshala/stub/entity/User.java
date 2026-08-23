@@ -25,6 +25,9 @@ public class User {
     @Column(name = "assigned_paathshaala_id")
     private UUID assignedPaathshalaId;
 
+    @Column(name = "selected_paathshaala_id")
+    private UUID selectedPaathshaalaId;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -44,16 +47,18 @@ public class User {
     public String getName()               { return name; }
     public String getPhoneNumber()        { return phoneNumber; }
     public String getRole()               { return role; }
-    public UUID getAssignedPaathshalaId() { return assignedPaathshalaId; }
-    public boolean isActive()             { return active; }
-    public Instant getCreatedAt()         { return createdAt; }
+    public UUID getAssignedPaathshalaId()  { return assignedPaathshalaId; }
+    public UUID getSelectedPaathshaalaId() { return selectedPaathshaalaId; }
+    public boolean isActive()              { return active; }
+    public Instant getCreatedAt()          { return createdAt; }
     public Instant getOnDemandRequestedAt() { return onDemandRequestedAt; }
 
     // ── Setters (needed for create and update operations) ─────────────
-    public void setName(String name)                               { this.name = name; }
-    public void setPhoneNumber(String phoneNumber)                 { this.phoneNumber = phoneNumber; }
-    public void setRole(String role)                               { this.role = role; }
-    public void setAssignedPaathshalaId(UUID assignedPaathshalaId){ this.assignedPaathshalaId = assignedPaathshalaId; }
-    public void setActive(boolean active)                          { this.active = active; }
-    public void setOnDemandRequestedAt(Instant onDemandRequestedAt){ this.onDemandRequestedAt = onDemandRequestedAt; }
+    public void setName(String name)                                 { this.name = name; }
+    public void setPhoneNumber(String phoneNumber)                   { this.phoneNumber = phoneNumber; }
+    public void setRole(String role)                                 { this.role = role; }
+    public void setAssignedPaathshalaId(UUID assignedPaathshalaId)   { this.assignedPaathshalaId = assignedPaathshalaId; }
+    public void setSelectedPaathshaalaId(UUID selectedPaathshaalaId) { this.selectedPaathshaalaId = selectedPaathshaalaId; }
+    public void setActive(boolean active)                            { this.active = active; }
+    public void setOnDemandRequestedAt(Instant onDemandRequestedAt)  { this.onDemandRequestedAt = onDemandRequestedAt; }
 }

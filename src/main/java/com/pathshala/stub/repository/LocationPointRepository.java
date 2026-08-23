@@ -18,8 +18,8 @@ public interface LocationPointRepository extends JpaRepository<LocationPoint, Lo
     @Query(value = """
             SELECT * FROM location_pings lp
             WHERE (cast(:userId as text)::uuid IS NULL OR lp.user_id = cast(:userId as text)::uuid)
-              AND (cast(:from as text)::timestamp IS NULL OR lp.captured_at >= cast(:from as text)::timestamp)
-              AND (cast(:to as text)::timestamp IS NULL OR lp.captured_at <= cast(:to as text)::timestamp)
+              AND (cast(:from as text)::timestamptz IS NULL OR lp.captured_at >= cast(:from as text)::timestamptz)
+              AND (cast(:to as text)::timestamptz IS NULL OR lp.captured_at <= cast(:to as text)::timestamptz)
             ORDER BY lp.captured_at ASC
             """, nativeQuery = true)
     List<LocationPoint> findByUserIdAndRange(
