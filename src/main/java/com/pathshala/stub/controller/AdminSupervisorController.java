@@ -37,6 +37,11 @@ public class AdminSupervisorController {
         return userService.findAllSupervisors(pageable);
     }
 
+    @GetMapping("/{id}")
+    public SupervisorResponse getById(@PathVariable UUID id) {
+        return userService.findSupervisorById(id);
+    }
+
     @PutMapping("/{id}")
     public SupervisorResponse update(
             @PathVariable UUID id,

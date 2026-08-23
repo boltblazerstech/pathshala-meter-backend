@@ -10,8 +10,8 @@ import java.util.UUID;
 public record PaathshalaResponse(
         UUID id,
         String name,
-        double lat,
-        double lng,
+        Double lat,
+        Double lng,
 
         @JsonProperty("source_map_link")
         String sourceMapLink,

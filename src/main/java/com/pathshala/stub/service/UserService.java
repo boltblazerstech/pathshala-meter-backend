@@ -70,6 +70,12 @@ public class UserService {
         return toSupervisorResponse(userRepository.save(user), null);
     }
 
+    @Transactional(readOnly = true)
+    public SupervisorResponse findSupervisorById(UUID id) {
+        User user = findUserByIdAndRole(id, "supervisor");
+        return toSupervisorResponse(user, null);
+    }
+
     @Transactional
     public void deactivateSupervisor(UUID id) {
         User user = findUserByIdAndRole(id, "supervisor");
@@ -166,6 +172,19 @@ public class UserService {
         User user = findUserByIdAndRole(id, "teacher");
         user.setActive(false);
         userRepository.save(user);
+    }
+
+    @Transactional(readOnly = true)
+    public TeacherResponse findTeacherById(UUID id) {
+        User user = findUserByIdAndRole(id, "teacher");
+        String paathshalaName = null;
+        if (user.getAssignedPaathshalaId() != null) {
+            paathshalaName = paathshalaRepository
+                    .findById(user.getAssignedPaathshalaId())
+                    .map(Paathshaala::getName)
+                    .orElse(null);
+        }
+        return toTeacherResponse(user, paathshalaName, null);
     }
 
     // ── Private helpers ───────────────────────────────────────────────

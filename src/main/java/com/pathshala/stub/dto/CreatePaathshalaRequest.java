@@ -8,7 +8,10 @@ public record CreatePaathshalaRequest(
         @NotBlank(message = "name is required")
         String name,
 
-        @NotBlank(message = "map_link is required")
         @JsonProperty("map_link")
-        String mapLink
+        String mapLink,
+
+        Double lat,
+
+        Double lng
 ) {}

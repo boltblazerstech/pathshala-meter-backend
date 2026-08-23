@@ -15,11 +15,9 @@ public class Paathshaala {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
-    private double latitude;
+    private Double latitude;
 
-    @Column(nullable = false)
-    private double longitude;
+    private Double longitude;
 
     @Column(name = "source_map_link")
     private String sourceMapLink;
@@ -41,15 +39,15 @@ public class Paathshaala {
 
     public UUID getId()                      { return id; }
     public String getName()                  { return name; }
-    public double getLatitude()              { return latitude; }
-    public double getLongitude()             { return longitude; }
+    public Double getLatitude()              { return latitude; }
+    public Double getLongitude()             { return longitude; }
     public String getSourceMapLink()         { return sourceMapLink; }
     public String getCoordinateConfidence()  { return coordinateConfidence; }
     public Instant getCreatedAt()            { return createdAt; }
 
     public void setName(String name)                           { this.name = name; }
-    public void setLatitude(double latitude)                   { this.latitude = latitude; }
-    public void setLongitude(double longitude)                 { this.longitude = longitude; }
+    public void setLatitude(Double latitude)                   { this.latitude = latitude; }
+    public void setLongitude(Double longitude)                 { this.longitude = longitude; }
     public void setSourceMapLink(String sourceMapLink)         { this.sourceMapLink = sourceMapLink; }
     public void setCoordinateConfidence(String c)              { this.coordinateConfidence = c; }
 }

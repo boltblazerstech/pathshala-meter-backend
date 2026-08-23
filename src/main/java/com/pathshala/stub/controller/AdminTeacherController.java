@@ -37,6 +37,11 @@ public class AdminTeacherController {
         return userService.findAllTeachers(pageable);
     }
 
+    @GetMapping("/{id}")
+    public TeacherResponse getById(@PathVariable UUID id) {
+        return userService.findTeacherById(id);
+    }
+
     @PutMapping("/{id}")
     public TeacherResponse update(
             @PathVariable UUID id,

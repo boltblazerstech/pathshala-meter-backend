@@ -4,6 +4,8 @@ import com.pathshala.stub.dto.*;
 import com.pathshala.stub.entity.Paathshaala;
 import com.pathshala.stub.repository.PaathshalaRepository;
 import com.pathshala.stub.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -14,6 +16,8 @@ import java.util.UUID;
 
 @Service
 public class PaathshalaService {
+
+    private static final Logger log = LoggerFactory.getLogger(PaathshalaService.class);
 
     private final PaathshalaRepository paathshalaRepository;
     private final UserRepository       userRepository;
@@ -29,14 +33,41 @@ public class PaathshalaService {
 
     @Transactional
     public PaathshalaResponse create(CreatePaathshalaRequest request) {
-        ParsedCoordinate coord = mapLinkParser.parseMapLink(request.mapLink());
-
         Paathshaala entity = new Paathshaala();
         entity.setName(request.name());
-        entity.setLatitude(coord.lat());
-        entity.setLongitude(coord.lng());
-        entity.setSourceMapLink(request.mapLink());
-        entity.setCoordinateConfidence(coord.confidence());
+
+        // Priority 1: Manual lat/lng provided directly
+        if (request.lat() != null && request.lng() != null) {
+            entity.setLatitude(request.lat());
+            entity.setLongitude(request.lng());
+            entity.setCoordinateConfidence("manual");
+            // Still store the map link if provided, for reference
+            if (request.mapLink() != null && !request.mapLink().isBlank()) {
+                entity.setSourceMapLink(request.mapLink());
+            }
+        }
+        // Priority 2: Parse from map link
+        else if (request.mapLink() != null && !request.mapLink().isBlank()) {
+            entity.setSourceMapLink(request.mapLink());
+            try {
+                ParsedCoordinate coord = mapLinkParser.parseMapLink(request.mapLink());
+                entity.setLatitude(coord.lat());
+                entity.setLongitude(coord.lng());
+                entity.setCoordinateConfidence(coord.confidence());
+            } catch (Exception e) {
+                log.warn("Failed to parse map link for new paathshaala '{}': {}",
+                        request.name(), e.getMessage());
+                entity.setLatitude(null);
+                entity.setLongitude(null);
+                entity.setCoordinateConfidence("unresolved");
+            }
+        }
+        // Priority 3: Neither provided
+        else {
+            entity.setLatitude(null);
+            entity.setLongitude(null);
+            entity.setCoordinateConfidence("unresolved");
+        }
 
         return toResponse(paathshalaRepository.save(entity));
     }
@@ -58,14 +89,32 @@ public class PaathshalaService {
             entity.setName(request.name());
         }
 
-        if (request.mapLink() != null && !request.mapLink().isBlank()) {
-            // Re-parse coordinates from the new link
-            ParsedCoordinate coord = mapLinkParser.parseMapLink(request.mapLink());
-            entity.setLatitude(coord.lat());
-            entity.setLongitude(coord.lng());
-            entity.setSourceMapLink(request.mapLink());
-            entity.setCoordinateConfidence(coord.confidence());
+        // Priority 1: Manual lat/lng takes precedence
+        if (request.lat() != null && request.lng() != null) {
+            entity.setLatitude(request.lat());
+            entity.setLongitude(request.lng());
+            entity.setCoordinateConfidence("manual");
+            // Still update the map link if provided, for reference
+            if (request.mapLink() != null && !request.mapLink().isBlank()) {
+                entity.setSourceMapLink(request.mapLink());
+            }
         }
+        // Priority 2: Re-parse from new map link (no manual lat/lng)
+        else if (request.mapLink() != null && !request.mapLink().isBlank()) {
+            entity.setSourceMapLink(request.mapLink());
+            try {
+                ParsedCoordinate coord = mapLinkParser.parseMapLink(request.mapLink());
+                entity.setLatitude(coord.lat());
+                entity.setLongitude(coord.lng());
+                entity.setCoordinateConfidence(coord.confidence());
+            } catch (Exception e) {
+                log.warn("Failed to parse updated map link for paathshaala '{}': {}",
+                        entity.getName(), e.getMessage());
+                // Keep existing lat/lng unchanged — only mark confidence as stale
+                entity.setCoordinateConfidence("unresolved");
+            }
+        }
+        // If neither mapLink nor lat/lng provided, coordinates stay as-is
 
         return toResponse(paathshalaRepository.save(entity));
     }
