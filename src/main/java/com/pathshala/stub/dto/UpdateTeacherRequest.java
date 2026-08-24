@@ -13,5 +13,7 @@ public record UpdateTeacherRequest(
 
         /** If provided, teacher is reassigned to a different paathshaala. */
         @JsonProperty("paathshaala_id")
-        UUID paathshalaId
+        UUID paathshalaId,
+
+        String password
 ) {}

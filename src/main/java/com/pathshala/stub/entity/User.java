@@ -28,6 +28,9 @@ public class User {
     @Column(name = "selected_paathshaala_id")
     private UUID selectedPaathshaalaId;
 
+    @Column(name = "password")
+    private String password;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -49,6 +52,7 @@ public class User {
     public String getRole()               { return role; }
     public UUID getAssignedPaathshalaId()  { return assignedPaathshalaId; }
     public UUID getSelectedPaathshaalaId() { return selectedPaathshaalaId; }
+    public String getPassword()            { return password; }
     public boolean isActive()              { return active; }
     public Instant getCreatedAt()          { return createdAt; }
     public Instant getOnDemandRequestedAt() { return onDemandRequestedAt; }
@@ -59,6 +63,7 @@ public class User {
     public void setRole(String role)                                 { this.role = role; }
     public void setAssignedPaathshalaId(UUID assignedPaathshalaId)   { this.assignedPaathshalaId = assignedPaathshalaId; }
     public void setSelectedPaathshaalaId(UUID selectedPaathshaalaId) { this.selectedPaathshaalaId = selectedPaathshaalaId; }
+    public void setPassword(String password)                         { this.password = password; }
     public void setActive(boolean active)                            { this.active = active; }
     public void setOnDemandRequestedAt(Instant onDemandRequestedAt)  { this.onDemandRequestedAt = onDemandRequestedAt; }
 }

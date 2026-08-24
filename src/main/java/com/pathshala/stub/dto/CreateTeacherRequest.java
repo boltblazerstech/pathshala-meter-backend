@@ -17,5 +17,7 @@ public record CreateTeacherRequest(
 
         @NotNull(message = "paathshaala_id is required")
         @JsonProperty("paathshaala_id")
-        UUID paathshalaId
+        UUID paathshalaId,
+
+        String password
 ) {}

@@ -37,6 +37,7 @@ public class UserService {
         user.setName(request.name());
         user.setPhoneNumber(request.phoneNumber());
         user.setRole("supervisor");
+        user.setPassword(resolvePassword(request.password()));
         user.setActive(true);
         // assignedPaathshalaId stays null for supervisors
         return toSupervisorResponse(userRepository.save(user), null, null, null);
@@ -76,6 +77,9 @@ public class UserService {
         }
         if (request.phoneNumber() != null && !request.phoneNumber().isBlank()) {
             user.setPhoneNumber(request.phoneNumber());
+        }
+        if (request.password() != null && !request.password().isBlank()) {
+            user.setPassword(request.password());
         }
         
         Paathshaala p = null;
@@ -117,6 +121,7 @@ public class UserService {
         user.setName(request.name());
         user.setPhoneNumber(request.phoneNumber());
         user.setRole("teacher");
+        user.setPassword(resolvePassword(request.password()));
         user.setAssignedPaathshalaId(paathshaala.getId());
         user.setActive(true);
 
@@ -163,6 +168,9 @@ public class UserService {
         }
         if (request.phoneNumber() != null && !request.phoneNumber().isBlank()) {
             user.setPhoneNumber(request.phoneNumber());
+        }
+        if (request.password() != null && !request.password().isBlank()) {
+            user.setPassword(request.password());
         }
 
         String paathshalaName = null;
@@ -259,6 +267,7 @@ public class UserService {
                 user.getId(),
                 user.getName(),
                 user.getPhoneNumber(),
+                user.getPassword(),
                 user.isActive(),
                 user.getCreatedAt(),
                 location != null ? location.getLat() : null,
@@ -284,6 +293,7 @@ public class UserService {
                 user.getId(),
                 user.getName(),
                 user.getPhoneNumber(),
+                user.getPassword(),
                 user.isActive(),
                 user.getAssignedPaathshalaId(),
                 paathshalaName,
@@ -293,5 +303,39 @@ public class UserService {
                 location != null ? location.getCapturedAt() : null,
                 distance
         );
+    }
+
+    /**
+     * Resolve the password for a new user:
+     * - If the admin provided one, use it as-is.
+     * - Otherwise, generate a random 6-digit numeric string.
+     */
+    private String resolvePassword(String requested) {
+        if (requested != null && !requested.isBlank()) {
+            return requested;
+        }
+        return String.format("%06d", new java.util.Random().nextInt(1_000_000));
+    }
+
+    /**
+     * Field-app: let a user change their own password.
+     */
+    @Transactional
+    public void changePassword(UUID userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("User not found: " + userId));
+
+        if (user.getPassword() == null || !user.getPassword().equals(request.currentPassword())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        if (request.newPassword() == null || request.newPassword().isBlank()) {
+            throw new IllegalArgumentException("New password must not be blank");
+        }
+        if (!request.newPassword().equals(request.confirmNewPassword())) {
+            throw new IllegalArgumentException("New password and confirm password do not match");
+        }
+
+        user.setPassword(request.newPassword());
+        userRepository.save(user);
     }
 }

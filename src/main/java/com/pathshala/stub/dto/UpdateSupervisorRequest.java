@@ -7,5 +7,7 @@ public record UpdateSupervisorRequest(
         String name,
 
         @JsonProperty("phone_number")
-        String phoneNumber
+        String phoneNumber,
+
+        String password
 ) {}

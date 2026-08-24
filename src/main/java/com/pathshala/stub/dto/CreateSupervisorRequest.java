@@ -10,5 +10,7 @@ public record CreateSupervisorRequest(
 
         @NotBlank(message = "phone_number is required")
         @JsonProperty("phone_number")
-        String phoneNumber
+        String phoneNumber,
+
+        String password
 ) {}

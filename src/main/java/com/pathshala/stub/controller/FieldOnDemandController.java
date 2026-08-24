@@ -1,13 +1,12 @@
 package com.pathshala.stub.controller;
 
+import com.pathshala.stub.dto.ChangePasswordRequest;
 import com.pathshala.stub.entity.User;
 import com.pathshala.stub.repository.UserRepository;
+import com.pathshala.stub.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.UUID;
@@ -17,9 +16,12 @@ import java.util.UUID;
 public class FieldOnDemandController {
 
     private final UserRepository userRepository;
+    private final UserService    userService;
 
-    public FieldOnDemandController(UserRepository userRepository) {
+    public FieldOnDemandController(UserRepository userRepository,
+                                   UserService userService) {
         this.userRepository = userRepository;
+        this.userService    = userService;
     }
 
     private UUID currentUserId() {
@@ -56,5 +58,20 @@ public class FieldOnDemandController {
             userRepository.save(user);
         }
         return ResponseEntity.ok(Map.of("status", "cleared"));
+    }
+
+    /**
+     * POST /api/field/change-password
+     * Lets a field-app user change their own password.
+     * Validates current password (plaintext comparison) and new/confirm match.
+     */
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
+        try {
+            userService.changePassword(currentUserId(), request);
+            return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

@@ -18,6 +18,8 @@ public record TeacherResponse(
         @JsonProperty("phone_number")
         String phoneNumber,
 
+        String password,
+
         boolean active,
 
         @JsonProperty("paathshaala_id")
