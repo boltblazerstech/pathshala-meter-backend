@@ -251,4 +251,61 @@ public class AdminLocationController {
         
         return org.springframework.http.ResponseEntity.ok(Map.of("status", "requested", "userId", userId));
     }
+
+    /**
+     * POST /api/admin/export
+     * Generates a CSV export of location pings within the given date range (and optionally filtered by userId).
+     */
+    @org.springframework.web.bind.annotation.PostMapping(value = "/export", produces = "text/csv")
+    public org.springframework.http.ResponseEntity<String> exportLocations(
+            @org.springframework.web.bind.annotation.RequestBody com.pathshala.stub.dto.ExportRequest request) {
+
+        java.time.ZoneId istZone = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.Instant fromInstant = (request.startDate() != null)
+                ? request.startDate().atStartOfDay(istZone).toInstant()
+                : null;
+        java.time.Instant toInstant = (request.endDate() != null)
+                ? request.endDate().atTime(java.time.LocalTime.MAX).atZone(istZone).toInstant()
+                : null;
+
+        List<LocationPoint> pings = locationRepository.findByUserIdAndRange(request.userId(), fromInstant, toInstant);
+
+        // Batch fetch users to enrich
+        Set<java.util.UUID> userIds = pings.stream().map(LocationPoint::getUserId).collect(Collectors.toSet());
+        Map<java.util.UUID, User> userMap = userRepository.findAllById(userIds)
+                .stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        StringBuilder csv = new StringBuilder();
+        csv.append("Name,Role,Phone Number,Captured At,Received At,Latitude,Longitude,Sync Status\n");
+
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(istZone);
+
+        for (LocationPoint ping : pings) {
+            User user = userMap.get(ping.getUserId());
+            String name = (user != null) ? user.getName() : "Unknown";
+            String role = (user != null) ? user.getRole() : "Unknown";
+            String phone = (user != null) ? user.getPhoneNumber() : "Unknown";
+
+            // Escape quotes in name/role/phone if necessary (CSV formatting)
+            name = "\"" + name.replace("\"", "\"\"") + "\"";
+            role = "\"" + role.replace("\"", "\"\"") + "\"";
+            phone = "\"" + phone.replace("\"", "\"\"") + "\"";
+
+            String capturedAt = formatter.format(ping.getCapturedAt());
+            String receivedAt = formatter.format(ping.getReceivedAt());
+
+            csv.append(String.format("%s,%s,%s,%s,%s,%f,%f,%s\n",
+                    name, role, phone, capturedAt, receivedAt, ping.getLat(), ping.getLng(), ping.getSyncStatus()));
+        }
+
+        String startStr = (request.startDate() != null) ? request.startDate().toString() : "all";
+        String endStr = (request.endDate() != null) ? request.endDate().toString() : "all";
+        String filename = "location-export-" + startStr + "-to-" + endStr + ".csv";
+
+        return org.springframework.http.ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8")
+                .body(csv.toString());
+    }
 }
