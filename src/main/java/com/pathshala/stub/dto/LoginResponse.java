@@ -1,3 +1,3 @@
 package com.pathshala.stub.dto;
 
-public record LoginResponse(String token) {}
+public record LoginResponse(String token, String name) {}

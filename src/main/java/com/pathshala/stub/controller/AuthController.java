@@ -49,12 +49,14 @@ public class AuthController {
         claims.put("role",    user.getRole());
         claims.put("user_id", user.getId().toString());
         claims.put("token_version", user.getTokenVersion());
+        claims.put("name", user.getName());
+        
         if (user.getAssignedPaathshalaId() != null) {
             claims.put("assigned_paathshaala_id", user.getAssignedPaathshalaId().toString());
         }
 
         String token = jwtUtil.generateToken(user.getId().toString(), claims);
-        return ResponseEntity.ok(new LoginResponse(token));
+        return ResponseEntity.ok(new LoginResponse(token, user.getName()));
     }
 
     @PostMapping("/logout")

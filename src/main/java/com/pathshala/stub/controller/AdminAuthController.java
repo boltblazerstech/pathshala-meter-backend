@@ -55,7 +55,7 @@ public class AdminAuthController {
                 "token_version", admin.getTokenVersion()
         );
         String token = jwtUtil.generateToken(admin.getId().toString(), claims);
-        return ResponseEntity.ok(new LoginResponse(token));
+        return ResponseEntity.ok(new LoginResponse(token, admin.getEmail()));
     }
 
     @GetMapping("/me")

@@ -140,7 +140,8 @@ public class TrackingWindowService {
                 .map(w -> new TrackingWindowResponse(
                         w.getStartTime().format(HH_MM),
                         w.getEndTime().format(HH_MM),
-                        w.getIntervalMinutes()
+                        w.getIntervalMinutes(),
+                        0 // overridden in controller
                 ));
     }
 

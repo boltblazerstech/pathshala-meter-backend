@@ -29,6 +29,7 @@ import java.util.UUID;
 public class TrackingWindowController {
 
     private final TrackingWindowService trackingWindowService;
+    private final com.pathshala.stub.repository.SystemConfigRepository systemConfigRepository;
 
     @Value("${tracking.default-start:09:00}")
     private String defaultStart;
@@ -39,8 +40,16 @@ public class TrackingWindowController {
     @Value("${tracking.default-interval:15}")
     private int defaultInterval;
 
-    public TrackingWindowController(TrackingWindowService trackingWindowService) {
+    public TrackingWindowController(TrackingWindowService trackingWindowService,
+                                    com.pathshala.stub.repository.SystemConfigRepository systemConfigRepository) {
         this.trackingWindowService = trackingWindowService;
+        this.systemConfigRepository = systemConfigRepository;
+    }
+
+    private int getHealingInterval() {
+        return systemConfigRepository.findById("healing_check_interval_minutes")
+                .map(sc -> Integer.parseInt(sc.getValue()))
+                .orElse(30);
     }
 
     @GetMapping
@@ -49,12 +58,15 @@ public class TrackingWindowController {
             @RequestParam(required = false) String end,
             @RequestParam(required = false) Integer interval) {
 
+        int healingInterval = getHealingInterval();
+
         // ── 1. Testing query-param override ────────────────────────────────
         if (start != null || end != null || interval != null) {
             return ResponseEntity.ok(new TrackingWindowResponse(
                     start    != null ? start    : defaultStart,
                     end      != null ? end      : defaultEnd,
-                    interval != null ? interval : defaultInterval
+                    interval != null ? interval : defaultInterval,
+                    healingInterval
             ));
         }
 
@@ -63,9 +75,10 @@ public class TrackingWindowController {
                 (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
 
         return trackingWindowService.findCurrentForUser(userId)
+                .map(resp -> new TrackingWindowResponse(resp.startTime(), resp.endTime(), resp.intervalMinutes(), healingInterval))
                 .map(ResponseEntity::ok)
                 // ── 3. Fall back to application.properties defaults ────────
                 .orElse(ResponseEntity.ok(
-                        new TrackingWindowResponse(defaultStart, defaultEnd, defaultInterval)));
+                        new TrackingWindowResponse(defaultStart, defaultEnd, defaultInterval, healingInterval)));
     }
 }
