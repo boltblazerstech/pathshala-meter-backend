@@ -43,6 +43,9 @@ public class User {
     @Column(name = "token_version", nullable = false)
     private int tokenVersion = 1;
 
+    @Column(name = "fcm_token")
+    private String fcmToken;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
@@ -60,6 +63,7 @@ public class User {
     public Instant getCreatedAt()          { return createdAt; }
     public Instant getOnDemandRequestedAt() { return onDemandRequestedAt; }
     public int getTokenVersion()           { return tokenVersion; }
+    public String getFcmToken()            { return fcmToken; }
 
     // ── Setters (needed for create and update operations) ─────────────
     public void setName(String name)                                 { this.name = name; }
@@ -71,4 +75,5 @@ public class User {
     public void setActive(boolean active)                            { this.active = active; }
     public void setOnDemandRequestedAt(Instant onDemandRequestedAt)  { this.onDemandRequestedAt = onDemandRequestedAt; }
     public void setTokenVersion(int tokenVersion)                    { this.tokenVersion = tokenVersion; }
+    public void setFcmToken(String fcmToken)                         { this.fcmToken = fcmToken; }
 }

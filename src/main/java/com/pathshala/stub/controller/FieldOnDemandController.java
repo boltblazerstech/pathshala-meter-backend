@@ -74,4 +74,18 @@ public class FieldOnDemandController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    /**
+     * POST /api/field/fcm-token
+     * Stores the Firebase Cloud Messaging device token for silent pushes.
+     */
+    @PostMapping("/fcm-token")
+    public ResponseEntity<?> updateFcmToken(@RequestBody com.pathshala.stub.dto.UpdateFcmTokenRequest request) {
+        User user = userRepository.findById(currentUserId()).orElse(null);
+        if (user != null) {
+            user.setFcmToken(request.fcmToken());
+            userRepository.save(user);
+        }
+        return ResponseEntity.ok(Map.of("status", "saved"));
+    }
 }

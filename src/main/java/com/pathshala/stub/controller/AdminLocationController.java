@@ -25,13 +25,16 @@ public class AdminLocationController {
     private final LocationPointRepository locationRepository;
     private final UserRepository userRepository;
     private final PaathshalaRepository paathshalaRepository;
+    private final com.pathshala.stub.service.FcmService fcmService;
 
     public AdminLocationController(LocationPointRepository locationRepository,
                                    UserRepository userRepository,
-                                   PaathshalaRepository paathshalaRepository) {
+                                   PaathshalaRepository paathshalaRepository,
+                                   com.pathshala.stub.service.FcmService fcmService) {
         this.locationRepository = locationRepository;
         this.userRepository = userRepository;
         this.paathshalaRepository = paathshalaRepository;
+        this.fcmService = fcmService;
     }
 
     /**
@@ -248,6 +251,11 @@ public class AdminLocationController {
         
         user.setOnDemandRequestedAt(java.time.Instant.now());
         userRepository.save(user);
+
+        // Send silent push if token is available
+        if (user.getFcmToken() != null && !user.getFcmToken().isBlank()) {
+            fcmService.sendOnDemandLocationRequest(user.getFcmToken(), userId);
+        }
         
         return org.springframework.http.ResponseEntity.ok(Map.of("status", "requested", "userId", userId));
     }

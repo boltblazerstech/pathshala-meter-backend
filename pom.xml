@@ -54,6 +54,13 @@
             <version>4.0.0</version>
         </dependency>
 
+        <!-- Firebase Admin SDK -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.3.0</version>
+        </dependency>
+
         <!-- Flyway — owns all schema changes from here on -->
         <dependency>
             <groupId>org.flywaydb</groupId>

@@ -44,7 +44,13 @@ public class AuthController {
             return unauthorized();
         }
 
-        // 3. Build JWT claims
+        // 3. Save FCM token if provided
+        if (request.fcmToken() != null && !request.fcmToken().isBlank()) {
+            user.setFcmToken(request.fcmToken());
+            userRepository.save(user);
+        }
+
+        // 4. Build JWT claims
         Map<String, Object> claims = new HashMap<>();
         claims.put("role",    user.getRole());
         claims.put("user_id", user.getId().toString());
