@@ -334,16 +334,20 @@ public class UserService {
                 .orElseThrow(() -> new NoSuchElementException("User not found: " + userId));
 
         if (user.getPassword() == null || !user.getPassword().equals(request.currentPassword())) {
+            System.out.println("Password change failed for " + userId + ": current password incorrect.");
             throw new IllegalArgumentException("Current password is incorrect");
         }
         if (request.newPassword() == null || request.newPassword().isBlank()) {
+            System.out.println("Password change failed for " + userId + ": new password blank.");
             throw new IllegalArgumentException("New password must not be blank");
         }
         if (!request.newPassword().equals(request.confirmNewPassword())) {
+            System.out.println("Password change failed for " + userId + ": passwords do not match.");
             throw new IllegalArgumentException("New password and confirm password do not match");
         }
 
         user.setPassword(request.newPassword());
         userRepository.save(user);
+        System.out.println("Password successfully changed for user " + userId);
     }
 }
