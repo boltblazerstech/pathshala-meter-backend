@@ -26,8 +26,7 @@ public class AdminSystemConfigController {
     }
 
     @PutMapping("/healing-interval")
-    public ResponseEntity<?> updateHealingInterval(@RequestBody Map<String, Integer> request) {
-        Integer minutes = request.get("minutes");
+    public ResponseEntity<?> updateHealingInterval(@RequestBody Integer minutes) {
         if (minutes == null || minutes < 1) {
             return ResponseEntity.badRequest().body(Map.of("error", "minutes must be a positive integer"));
         }
