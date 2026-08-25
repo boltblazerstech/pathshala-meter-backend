@@ -19,9 +19,6 @@ public class JwtUtil {
     @Value("${jwt.secret:defaultSecretKeyWithAtLeast32CharactersForHmacSha256}")
     private String secretString;
 
-    @Value("${jwt.expiration-ms:86400000}")
-    private long expirationMs;
-
     private SecretKey key;
 
     @PostConstruct
@@ -32,7 +29,7 @@ public class JwtUtil {
     /**
      * Generate a signed JWT.
      * @param subject   the JWT `sub` claim (user_id or admin_id as UUID string)
-     * @param extraClaims  additional claims to embed (role, user_id, admin_id, etc.)
+     * @param extraClaims  additional claims to embed (role, user_id, admin_id, token_version, etc.)
      */
     public String generateToken(String subject, Map<String, Object> extraClaims) {
         long now = System.currentTimeMillis();
@@ -40,7 +37,6 @@ public class JwtUtil {
                 .claims(extraClaims)   // set extra claims first
                 .subject(subject)      // sub overrides any "sub" in extraClaims
                 .issuedAt(new Date(now))
-                .expiration(new Date(now + expirationMs))
                 .signWith(key)
                 .compact();
     }

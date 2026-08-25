@@ -40,6 +40,9 @@ public class User {
     @Column(name = "on_demand_requested_at")
     private Instant onDemandRequestedAt;
 
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion = 1;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
@@ -56,6 +59,7 @@ public class User {
     public boolean isActive()              { return active; }
     public Instant getCreatedAt()          { return createdAt; }
     public Instant getOnDemandRequestedAt() { return onDemandRequestedAt; }
+    public int getTokenVersion()           { return tokenVersion; }
 
     // ── Setters (needed for create and update operations) ─────────────
     public void setName(String name)                                 { this.name = name; }
@@ -66,4 +70,5 @@ public class User {
     public void setPassword(String password)                         { this.password = password; }
     public void setActive(boolean active)                            { this.active = active; }
     public void setOnDemandRequestedAt(Instant onDemandRequestedAt)  { this.onDemandRequestedAt = onDemandRequestedAt; }
+    public void setTokenVersion(int tokenVersion)                    { this.tokenVersion = tokenVersion; }
 }

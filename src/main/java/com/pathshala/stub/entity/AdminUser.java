@@ -21,6 +21,9 @@ public class AdminUser {
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion = 1;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
@@ -30,4 +33,7 @@ public class AdminUser {
     public String getEmail()      { return email; }
     public String getPasswordHash() { return passwordHash; }
     public Instant getCreatedAt() { return createdAt; }
+    public int getTokenVersion()  { return tokenVersion; }
+
+    public void setTokenVersion(int tokenVersion) { this.tokenVersion = tokenVersion; }
 }

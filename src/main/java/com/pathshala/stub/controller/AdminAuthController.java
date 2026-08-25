@@ -50,8 +50,9 @@ public class AdminAuthController {
 
         // 3. Issue admin JWT
         Map<String, Object> claims = Map.of(
-                "role",     "admin",
-                "admin_id", admin.getId().toString()
+                "role",          "admin",
+                "admin_id",      admin.getId().toString(),
+                "token_version", admin.getTokenVersion()
         );
         String token = jwtUtil.generateToken(admin.getId().toString(), claims);
         return ResponseEntity.ok(new LoginResponse(token));
@@ -69,6 +70,17 @@ public class AdminAuthController {
                 "email", admin.getEmail(),
                 "role", "admin"
         ));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        String subject = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        AdminUser admin = adminUserRepository.findById(UUID.fromString(subject)).orElse(null);
+        if (admin != null) {
+            admin.setTokenVersion(admin.getTokenVersion() + 1);
+            adminUserRepository.save(admin);
+        }
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
 
     private static ResponseEntity<?> unauthorized() {

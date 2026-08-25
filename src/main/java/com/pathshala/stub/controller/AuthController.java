@@ -48,12 +48,24 @@ public class AuthController {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role",    user.getRole());
         claims.put("user_id", user.getId().toString());
+        claims.put("token_version", user.getTokenVersion());
         if (user.getAssignedPaathshalaId() != null) {
             claims.put("assigned_paathshaala_id", user.getAssignedPaathshalaId().toString());
         }
 
         String token = jwtUtil.generateToken(user.getId().toString(), claims);
         return ResponseEntity.ok(new LoginResponse(token));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        String subject = (String) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User user = userRepository.findById(java.util.UUID.fromString(subject)).orElse(null);
+        if (user != null) {
+            user.setTokenVersion(user.getTokenVersion() + 1);
+            userRepository.save(user);
+        }
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
 
     private static ResponseEntity<?> unauthorized() {
