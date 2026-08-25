@@ -96,7 +96,11 @@ public class UserService {
         if (user.getSelectedPaathshaalaId() != null) {
             p = paathshalaRepository.findById(user.getSelectedPaathshaalaId()).orElse(null);
         }
-        return toSupervisorResponse(user, p != null ? p.getName() : null, p, null);
+        // Fetch the latest location ping for this user
+        com.pathshala.stub.entity.LocationPoint latestLocation =
+                locationPointRepository.findLatestPingsForUsers(List.of(id))
+                        .stream().findFirst().orElse(null);
+        return toSupervisorResponse(user, p != null ? p.getName() : null, p, latestLocation);
     }
 
     @Transactional
@@ -213,7 +217,11 @@ public class UserService {
                 paathshalaName = p.getName();
             }
         }
-        return toTeacherResponse(user, paathshalaName, p, null);
+        // Fetch the latest location ping for this user
+        com.pathshala.stub.entity.LocationPoint latestLocation =
+                locationPointRepository.findLatestPingsForUsers(List.of(id))
+                        .stream().findFirst().orElse(null);
+        return toTeacherResponse(user, paathshalaName, p, latestLocation);
     }
 
     @Transactional
