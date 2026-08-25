@@ -19,12 +19,14 @@ public class FirebaseConfig {
     @PostConstruct
     public void initialize() {
         try {
-            if (serviceAccountPath == null || serviceAccountPath.isBlank()) {
-                System.out.println("No Firebase service account path provided. FCM pushes will be disabled.");
+            String credentialsJson = System.getenv("FIREBASE_CREDENTIALS_JSON");
+            if (credentialsJson == null || credentialsJson.isBlank()) {
+                System.out.println("FIREBASE_CREDENTIALS_JSON environment variable is missing. FCM pushes will be disabled.");
                 return;
             }
 
-            FileInputStream serviceAccount = new FileInputStream(serviceAccountPath);
+            java.io.InputStream serviceAccount = new java.io.ByteArrayInputStream(
+                    credentialsJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
@@ -34,7 +36,7 @@ public class FirebaseConfig {
                 FirebaseApp.initializeApp(options);
                 System.out.println("Firebase Admin SDK initialized successfully.");
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.err.println("Failed to initialize Firebase Admin SDK: " + e.getMessage());
         }
     }

@@ -238,7 +238,7 @@ public class AdminLocationController {
 
     /**
      * POST /api/admin/locations/request/{userId}
-     * Requests an on-demand location refresh from the given user's field app.
+     * Requests an on-demand location refresh from the given user's field app using FCM.
      */
     @org.springframework.web.bind.annotation.PostMapping("/locations/request/{userId}")
     public org.springframework.http.ResponseEntity<?> requestOnDemandLocation(
@@ -248,16 +248,36 @@ public class AdminLocationController {
         if (user == null) {
             return org.springframework.http.ResponseEntity.notFound().build();
         }
+
+        if (user.getFcmToken() == null || user.getFcmToken().isBlank()) {
+            return org.springframework.http.ResponseEntity.badRequest()
+                    .body(Map.of("error", "User has no registered device token for push notifications"));
+        }
         
         user.setOnDemandRequestedAt(java.time.Instant.now());
         userRepository.save(user);
 
-        // Send silent push if token is available
-        if (user.getFcmToken() != null && !user.getFcmToken().isBlank()) {
-            fcmService.sendOnDemandLocationRequest(user.getFcmToken(), userId);
+        try {
+            // Send a silent FCM data message (no notification payload)
+            com.google.firebase.messaging.Message message = com.google.firebase.messaging.Message.builder()
+                .setToken(user.getFcmToken())
+                .putData("type", "location_request")
+                .putData("timestamp", java.time.Instant.now().toString())
+                .setAndroidConfig(com.google.firebase.messaging.AndroidConfig.builder()
+                    .setPriority(com.google.firebase.messaging.AndroidConfig.Priority.HIGH)
+                    .build())
+                .build();
+            
+            String response = com.google.firebase.messaging.FirebaseMessaging.getInstance().send(message);
+            return org.springframework.http.ResponseEntity.ok(Map.of(
+                    "status", "requested", 
+                    "userId", userId,
+                    "messageId", response
+            ));
+        } catch (Exception e) {
+            return org.springframework.http.ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to send FCM push: " + e.getMessage()));
         }
-        
-        return org.springframework.http.ResponseEntity.ok(Map.of("status", "requested", "userId", userId));
     }
 
     /**
