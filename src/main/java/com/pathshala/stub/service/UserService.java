@@ -78,15 +78,21 @@ public class UserService {
         if (request.phoneNumber() != null && !request.phoneNumber().isBlank()) {
             user.setPhoneNumber(request.phoneNumber());
         }
+        
+        System.out.println("Admin updateSupervisor called for " + id + ". Received password in payload: '" + request.password() + "'");
         if (request.password() != null && !request.password().isBlank()) {
             user.setPassword(request.password());
+            System.out.println("Password updated for supervisor " + id + " to: '" + request.password() + "'");
         }
         
         Paathshaala p = null;
         if (user.getSelectedPaathshaalaId() != null) {
             p = paathshalaRepository.findById(user.getSelectedPaathshaalaId()).orElse(null);
         }
-        return toSupervisorResponse(userRepository.save(user), p != null ? p.getName() : null, p, null);
+        User savedUser = userRepository.save(user);
+        System.out.println("Supervisor " + id + " saved. Final password in DB: '" + savedUser.getPassword() + "'");
+        
+        return toSupervisorResponse(savedUser, p != null ? p.getName() : null, p, null);
     }
 
     @Transactional(readOnly = true)
@@ -173,8 +179,11 @@ public class UserService {
         if (request.phoneNumber() != null && !request.phoneNumber().isBlank()) {
             user.setPhoneNumber(request.phoneNumber());
         }
+        
+        System.out.println("Admin updateTeacher called for " + id + ". Received password in payload: '" + request.password() + "'");
         if (request.password() != null && !request.password().isBlank()) {
             user.setPassword(request.password());
+            System.out.println("Password updated for teacher " + id + " to: '" + request.password() + "'");
         }
 
         String paathshalaName = null;
@@ -196,7 +205,9 @@ public class UserService {
             }
         }
 
-        return toTeacherResponse(userRepository.save(user), paathshalaName, p, null);
+        User savedUser = userRepository.save(user);
+        System.out.println("Teacher " + id + " saved. Final password in DB: '" + savedUser.getPassword() + "'");
+        return toTeacherResponse(savedUser, paathshalaName, p, null);
     }
 
     @Transactional
