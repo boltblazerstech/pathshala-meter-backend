@@ -46,6 +46,18 @@ public class User {
     @Column(name = "fcm_token")
     private String fcmToken;
 
+    @Column(name = "home_lat")
+    private Double homeLat;
+
+    @Column(name = "home_lng")
+    private Double homeLng;
+
+    @Column(name = "home_map_link")
+    private String homeMapLink;
+
+    @Column(name = "home_confidence")
+    private String homeConfidence;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
@@ -64,6 +76,10 @@ public class User {
     public Instant getOnDemandRequestedAt() { return onDemandRequestedAt; }
     public int getTokenVersion()           { return tokenVersion; }
     public String getFcmToken()            { return fcmToken; }
+    public Double getHomeLat()             { return homeLat; }
+    public Double getHomeLng()             { return homeLng; }
+    public String getHomeMapLink()         { return homeMapLink; }
+    public String getHomeConfidence()      { return homeConfidence; }
 
     // ── Setters (needed for create and update operations) ─────────────
     public void setName(String name)                                 { this.name = name; }
@@ -76,4 +92,8 @@ public class User {
     public void setOnDemandRequestedAt(Instant onDemandRequestedAt)  { this.onDemandRequestedAt = onDemandRequestedAt; }
     public void setTokenVersion(int tokenVersion)                    { this.tokenVersion = tokenVersion; }
     public void setFcmToken(String fcmToken)                         { this.fcmToken = fcmToken; }
+    public void setHomeLat(Double homeLat)                           { this.homeLat = homeLat; }
+    public void setHomeLng(Double homeLng)                           { this.homeLng = homeLng; }
+    public void setHomeMapLink(String homeMapLink)                   { this.homeMapLink = homeMapLink; }
+    public void setHomeConfidence(String homeConfidence)             { this.homeConfidence = homeConfidence; }
 }

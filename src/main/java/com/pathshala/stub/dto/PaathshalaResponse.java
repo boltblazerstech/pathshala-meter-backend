@@ -22,5 +22,17 @@ public record PaathshalaResponse(
 
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Kolkata")
         @JsonProperty("created_at")
-        Instant createdAt
+        Instant createdAt,
+
+        @JsonProperty("supervisor_id")
+        UUID supervisorId,
+
+        @JsonProperty("supervisor_name")
+        String supervisorName,
+
+        @JsonProperty("opening_time")
+        String openingTime,
+
+        @JsonProperty("closing_time")
+        String closingTime
 ) {}

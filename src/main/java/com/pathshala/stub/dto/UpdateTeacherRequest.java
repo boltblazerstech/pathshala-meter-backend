@@ -15,5 +15,14 @@ public record UpdateTeacherRequest(
         @JsonProperty("paathshaala_id")
         UUID paathshalaId,
 
-        String password
+        String password,
+
+        @JsonProperty("home_map_link")
+        String homeMapLink,
+
+        @JsonProperty("home_lat")
+        Double homeLat,
+
+        @JsonProperty("home_lng")
+        Double homeLng
 ) {}

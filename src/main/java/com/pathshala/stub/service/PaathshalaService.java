@@ -39,6 +39,9 @@ public class PaathshalaService {
         Paathshaala entity = new Paathshaala();
         entity.setName(request.name());
 
+        processSupervisor(entity, request.supervisorId());
+        processTimes(entity, request.openingTime(), request.closingTime());
+
         // Priority 1: Manual lat/lng provided directly
         if (request.lat() != null && request.lng() != null) {
             entity.setLatitude(request.lat());
@@ -79,10 +82,18 @@ public class PaathshalaService {
 
     @Transactional(readOnly = true)
     public PagedResponse<PaathshalaResponse> findAll(Pageable pageable) {
-        Page<PaathshalaResponse> page = paathshalaRepository
-                .findAll(pageable)
-                .map(this::toResponse);
-        return PagedResponse.of(page);
+        Page<Paathshaala> page = paathshalaRepository.findAll(pageable);
+        
+        java.util.Set<UUID> supervisorIds = page.getContent().stream()
+                .map(Paathshaala::getSupervisorId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+                
+        java.util.Map<UUID, String> supervisorNames = userRepository.findAllById(supervisorIds).stream()
+                .collect(java.util.stream.Collectors.toMap(com.pathshala.stub.entity.User::getId, com.pathshala.stub.entity.User::getName));
+
+        Page<PaathshalaResponse> responsePage = page.map(p -> toResponse(p, supervisorNames.get(p.getSupervisorId())));
+        return PagedResponse.of(responsePage);
     }
 
     @Transactional
@@ -92,6 +103,14 @@ public class PaathshalaService {
 
         if (request.name() != null && !request.name().isBlank()) {
             entity.setName(request.name());
+        }
+
+        if (request.supervisorId() != null) {
+            processSupervisor(entity, request.supervisorId());
+        }
+        
+        if (request.openingTime() != null || request.closingTime() != null) {
+            processTimes(entity, request.openingTime(), request.closingTime());
         }
 
         boolean locationChanged = false;
@@ -128,7 +147,12 @@ public class PaathshalaService {
             resolveAddress(entity);
         }
 
-        return toResponse(paathshalaRepository.save(entity));
+        Paathshaala saved = paathshalaRepository.save(entity);
+        String supervisorName = null;
+        if (saved.getSupervisorId() != null) {
+            supervisorName = userRepository.findById(saved.getSupervisorId()).map(com.pathshala.stub.entity.User::getName).orElse(null);
+        }
+        return toResponse(saved, supervisorName);
     }
 
     @Transactional
@@ -147,6 +171,43 @@ public class PaathshalaService {
         paathshalaRepository.deleteById(id);
     }
     
+    @Transactional(readOnly = true)
+    public java.util.List<PaathshalaResponse> findBySupervisorId(UUID supervisorId) {
+        if (!userRepository.existsById(supervisorId)) {
+            throw new NoSuchElementException("Supervisor not found: " + supervisorId);
+        }
+        String supervisorName = userRepository.findById(supervisorId).map(com.pathshala.stub.entity.User::getName).orElse(null);
+        return paathshalaRepository.findBySupervisorId(supervisorId).stream()
+                .map(p -> toResponse(p, supervisorName))
+                .collect(java.util.stream.Collectors.toList());
+    }
+    
+    private void processSupervisor(Paathshaala entity, UUID supervisorId) {
+        if (supervisorId == null) {
+            entity.setSupervisorId(null);
+            return;
+        }
+        com.pathshala.stub.entity.User user = userRepository.findById(supervisorId)
+                .orElseThrow(() -> new IllegalArgumentException("Supervisor not found: " + supervisorId));
+        if (!"supervisor".equals(user.getRole())) {
+            throw new IllegalArgumentException("User is not a supervisor: " + supervisorId);
+        }
+        entity.setSupervisorId(supervisorId);
+    }
+
+    private void processTimes(Paathshaala entity, String openingTime, String closingTime) {
+        if ((openingTime == null && closingTime != null) || (openingTime != null && closingTime == null)) {
+            throw new IllegalArgumentException("Both opening_time and closing_time must be provided together.");
+        }
+        if (openingTime == null) {
+            entity.setOpeningTime(null);
+            entity.setClosingTime(null);
+        } else {
+            entity.setOpeningTime(java.time.LocalTime.parse(openingTime));
+            entity.setClosingTime(java.time.LocalTime.parse(closingTime));
+        }
+    }
+
     private void resolveAddress(Paathshaala entity) {
         if (entity.getLatitude() != null && entity.getLongitude() != null) {
             GeocodeResult geocodeResult = geocodeService.reverseGeocode(entity.getLatitude(), entity.getLongitude());
@@ -158,6 +219,14 @@ public class PaathshalaService {
 
     // ── Mapping ──────────────────────────────────────────────────────
     private PaathshalaResponse toResponse(Paathshaala p) {
+        String supervisorName = null;
+        if (p.getSupervisorId() != null) {
+            supervisorName = userRepository.findById(p.getSupervisorId()).map(com.pathshala.stub.entity.User::getName).orElse(null);
+        }
+        return toResponse(p, supervisorName);
+    }
+
+    private PaathshalaResponse toResponse(Paathshaala p, String supervisorName) {
         return new PaathshalaResponse(
                 p.getId(),
                 p.getName(),
@@ -166,7 +235,11 @@ public class PaathshalaService {
                 p.getAddress(),
                 p.getSourceMapLink(),
                 p.getCoordinateConfidence(),
-                p.getCreatedAt()
+                p.getCreatedAt(),
+                p.getSupervisorId(),
+                supervisorName,
+                p.getOpeningTime() != null ? p.getOpeningTime().toString() : null,
+                p.getClosingTime() != null ? p.getClosingTime().toString() : null
         );
     }
 }

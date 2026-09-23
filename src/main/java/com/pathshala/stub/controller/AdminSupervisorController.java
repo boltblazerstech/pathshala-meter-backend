@@ -17,9 +17,11 @@ import java.util.UUID;
 public class AdminSupervisorController {
 
     private final UserService userService;
+    private final com.pathshala.stub.service.PaathshalaService paathshalaService;
 
-    public AdminSupervisorController(UserService userService) {
+    public AdminSupervisorController(UserService userService, com.pathshala.stub.service.PaathshalaService paathshalaService) {
         this.userService = userService;
+        this.paathshalaService = paathshalaService;
     }
 
     @PostMapping
@@ -61,5 +63,10 @@ public class AdminSupervisorController {
             @PathVariable UUID id,
             @RequestBody UpdateSelectedPaathshaalaRequest request) {
         return userService.updateSelectedPaathshaala(id, request);
+    }
+
+    @GetMapping("/{id}/paathshaalas")
+    public java.util.List<PaathshalaResponse> getPaathshaalas(@PathVariable UUID id) {
+        return paathshalaService.findBySupervisorId(id);
     }
 }

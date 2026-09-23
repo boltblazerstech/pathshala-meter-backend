@@ -39,5 +39,17 @@ public record SupervisorResponse(
         String selectedPaathshaalaName,
 
         @JsonProperty("latest_distance_meters")
-        Double latestDistanceMeters
+        Double latestDistanceMeters,
+
+        @JsonProperty("home_lat")
+        Double homeLat,
+
+        @JsonProperty("home_lng")
+        Double homeLng,
+
+        @JsonProperty("home_map_link")
+        String homeMapLink,
+
+        @JsonProperty("home_confidence")
+        String homeConfidence
 ) {}

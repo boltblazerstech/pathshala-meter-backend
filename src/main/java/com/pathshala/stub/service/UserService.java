@@ -20,13 +20,16 @@ public class UserService {
     private final UserRepository       userRepository;
     private final PaathshalaRepository paathshalaRepository;
     private final com.pathshala.stub.repository.LocationPointRepository locationPointRepository;
+    private final MapLinkParser mapLinkParser;
 
     public UserService(UserRepository userRepository,
                        PaathshalaRepository paathshalaRepository,
-                       com.pathshala.stub.repository.LocationPointRepository locationPointRepository) {
+                       com.pathshala.stub.repository.LocationPointRepository locationPointRepository,
+                       MapLinkParser mapLinkParser) {
         this.userRepository       = userRepository;
         this.paathshalaRepository = paathshalaRepository;
         this.locationPointRepository = locationPointRepository;
+        this.mapLinkParser = mapLinkParser;
     }
 
     // ── Supervisors ───────────────────────────────────────────────────
@@ -39,6 +42,7 @@ public class UserService {
         user.setRole("supervisor");
         user.setPassword(resolvePassword(request.password()));
         user.setActive(true);
+        processHomeLocation(user, request.homeMapLink(), request.homeLat(), request.homeLng(), true);
         // assignedPaathshalaId stays null for supervisors
         return toSupervisorResponse(userRepository.save(user), null, null, null);
     }
@@ -84,6 +88,8 @@ public class UserService {
             user.setPassword(request.password());
             System.out.println("Password updated for supervisor " + id + " to: '" + request.password() + "'");
         }
+        
+        processHomeLocation(user, request.homeMapLink(), request.homeLat(), request.homeLng(), false);
         
         Paathshaala p = null;
         if (user.getSelectedPaathshaalaId() != null) {
@@ -134,6 +140,7 @@ public class UserService {
         user.setPassword(resolvePassword(request.password()));
         user.setAssignedPaathshalaId(paathshaala.getId());
         user.setActive(true);
+        processHomeLocation(user, request.homeMapLink(), request.homeLat(), request.homeLng(), true);
 
         return toTeacherResponse(userRepository.save(user), paathshaala.getName(), paathshaala, null);
     }
@@ -185,6 +192,8 @@ public class UserService {
             user.setPassword(request.password());
             System.out.println("Password updated for teacher " + id + " to: '" + request.password() + "'");
         }
+
+        processHomeLocation(user, request.homeMapLink(), request.homeLat(), request.homeLng(), false);
 
         String paathshalaName = null;
         Paathshaala p = null;
@@ -261,6 +270,36 @@ public class UserService {
 
     // ── Private helpers ───────────────────────────────────────────────
 
+    private void processHomeLocation(User user, String mapLink, Double lat, Double lng, boolean isCreate) {
+        if (isCreate && (lat == null || lng == null) && (mapLink == null || mapLink.isBlank())) {
+            throw new IllegalArgumentException("Either home_map_link or manual home_lat and home_lng must be provided.");
+        }
+
+        if (lat != null && lng != null) {
+            user.setHomeLat(lat);
+            user.setHomeLng(lng);
+            user.setHomeConfidence("manual");
+            if (mapLink != null && !mapLink.isBlank()) {
+                user.setHomeMapLink(mapLink);
+            }
+        } else if (mapLink != null && !mapLink.isBlank()) {
+            user.setHomeMapLink(mapLink);
+            try {
+                ParsedCoordinate coord = mapLinkParser.parseMapLink(mapLink);
+                user.setHomeLat(coord.lat());
+                user.setHomeLng(coord.lng());
+                user.setHomeConfidence(coord.confidence());
+            } catch (Exception e) {
+                user.setHomeLat(null);
+                user.setHomeLng(null);
+                user.setHomeConfidence("unresolved");
+                if (isCreate) {
+                    throw new IllegalArgumentException("Failed to parse home map link: " + e.getMessage());
+                }
+            }
+        }
+    }
+
     private User findUserByIdAndRole(UUID id, String role) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException(
@@ -294,7 +333,11 @@ public class UserService {
                 location != null ? location.getCapturedAt() : null,
                 user.getSelectedPaathshaalaId(),
                 paathshaalaName,
-                distance
+                distance,
+                user.getHomeLat(),
+                user.getHomeLng(),
+                user.getHomeMapLink(),
+                user.getHomeConfidence()
         );
     }
 
@@ -320,7 +363,11 @@ public class UserService {
                 location != null ? location.getLat() : null,
                 location != null ? location.getLng() : null,
                 location != null ? location.getCapturedAt() : null,
-                distance
+                distance,
+                user.getHomeLat(),
+                user.getHomeLng(),
+                user.getHomeMapLink(),
+                user.getHomeConfidence()
         );
     }
 
