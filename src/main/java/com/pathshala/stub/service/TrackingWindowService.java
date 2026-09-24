@@ -8,6 +8,7 @@ import com.pathshala.stub.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -25,11 +26,20 @@ public class TrackingWindowService {
 
     private final TrackingWindowRepository windowRepository;
     private final UserRepository           userRepository;
+    private final com.pathshala.stub.repository.PaathshalaRepository paathshalaRepository;
+    private final SupervisorTimetableService timetableService;
+    private final com.pathshala.stub.repository.SystemConfigRepository systemConfigRepository;
 
     public TrackingWindowService(TrackingWindowRepository windowRepository,
-                                 UserRepository userRepository) {
+                                 UserRepository userRepository,
+                                 com.pathshala.stub.repository.PaathshalaRepository paathshalaRepository,
+                                 SupervisorTimetableService timetableService,
+                                 com.pathshala.stub.repository.SystemConfigRepository systemConfigRepository) {
         this.windowRepository = windowRepository;
         this.userRepository   = userRepository;
+        this.paathshalaRepository = paathshalaRepository;
+        this.timetableService = timetableService;
+        this.systemConfigRepository = systemConfigRepository;
     }
 
     // ── Admin: Create ─────────────────────────────────────────────────
@@ -134,15 +144,120 @@ public class TrackingWindowService {
     // ── Field-app: current window for the calling user ────────────────
 
     @Transactional(readOnly = true)
-    public Optional<TrackingWindowResponse> findCurrentForUser(UUID userId) {
+    public List<TrackingWindowDto> findWindowsForUser(UUID userId) {
         LocalDate today = LocalDate.now(IST);
-        return windowRepository.findCurrentForUser(userId, today)
-                .map(w -> new TrackingWindowResponse(
-                        w.getStartTime().format(HH_MM),
-                        w.getEndTime().format(HH_MM),
-                        w.getIntervalMinutes(),
-                        0 // overridden in controller
-                ));
+
+        // a) FIRST check for a manual override in the existing tracking_windows table
+        Optional<TrackingWindow> manualOverride = windowRepository.findCurrentForUser(userId, today);
+        if (manualOverride.isPresent()) {
+            TrackingWindow w = manualOverride.get();
+            return List.of(new TrackingWindowDto(
+                    w.getStartTime().format(HH_MM),
+                    w.getEndTime().format(HH_MM),
+                    w.getIntervalMinutes(),
+                    null // Manual overrides don't carry a specific paathshaala_id in this context
+            ));
+        }
+
+        // b) If no manual override, derive from role and paathshaala
+        User user = userRepository.findById(userId).orElseThrow();
+        
+        int preBuffer = getConfigInt("pre_buffer_minutes", 45);
+        int postBuffer = getConfigInt("post_buffer_minutes", 45);
+        int fetchInterval = getConfigInt("fetch_interval_minutes", 10);
+
+        if ("teacher".equals(user.getRole())) {
+            if (user.getAssignedPaathshalaId() == null) {
+                return Collections.emptyList();
+            }
+            return paathshalaRepository.findById(user.getAssignedPaathshalaId())
+                    .map(p -> computeWindow(p, preBuffer, postBuffer, fetchInterval))
+                    .map(w -> w != null ? List.of(w) : Collections.<TrackingWindowDto>emptyList())
+                    .orElse(Collections.emptyList());
+        }
+
+        if ("supervisor".equals(user.getRole())) {
+            int dow = today.getDayOfWeek().getValue(); // 1=Monday, 7=Sunday
+            
+            // Fetch overrides for today
+            List<TimetableOverrideDto> overrides = timetableService.getOverrides(userId, today, today);
+            Map<String, UUID> overrideMap = overrides.stream()
+                    .collect(Collectors.toMap(TimetableOverrideDto::slot, TimetableOverrideDto::paathshaalaId));
+            
+            // Fetch weekly timetable
+            TimetableResponse timetable = timetableService.getTimetable(userId);
+            Map<String, UUID> weeklyMap = timetable.slots().stream()
+                    .filter(s -> s.dayOfWeek() == dow)
+                    .collect(Collectors.toMap(TimetableSlotDto::slot, TimetableSlotDto::paathshaalaId));
+
+            List<TrackingWindowDto> windows = new ArrayList<>();
+            
+            for (String slot : List.of("MORNING", "EVENING")) {
+                UUID pid;
+                if (overrideMap.containsKey(slot)) {
+                    pid = overrideMap.get(slot); // even if null (explicitly skipped)
+                } else {
+                    pid = weeklyMap.get(slot);
+                }
+                
+                if (pid != null) {
+                    paathshalaRepository.findById(pid)
+                            .map(p -> computeWindow(p, preBuffer, postBuffer, fetchInterval))
+                            .ifPresent(windows::add);
+                }
+            }
+            return windows;
+        }
+
+        return Collections.emptyList();
+    }
+    
+    public com.pathshala.stub.entity.Paathshaala resolveTargetPaathshaalaForTime(User user, Instant pointTime) {
+        if ("teacher".equals(user.getRole())) {
+            if (user.getAssignedPaathshalaId() == null) return null;
+            return paathshalaRepository.findById(user.getAssignedPaathshalaId()).orElse(null);
+        }
+
+        if ("supervisor".equals(user.getRole())) {
+            LocalDate today = pointTime.atZone(IST).toLocalDate();
+            LocalTime time = pointTime.atZone(IST).toLocalTime();
+            int dow = today.getDayOfWeek().getValue();
+            
+            // Cutoff for MORNING vs EVENING is 14:00 (2:00 PM)
+            String slot = time.isBefore(LocalTime.of(14, 0)) ? "MORNING" : "EVENING";
+
+            List<TimetableOverrideDto> overrides = timetableService.getOverrides(user.getId(), today, today);
+            for (TimetableOverrideDto o : overrides) {
+                if (slot.equals(o.slot())) {
+                    if (o.paathshaalaId() == null) return null;
+                    return paathshalaRepository.findById(o.paathshaalaId()).orElse(null);
+                }
+            }
+
+            TimetableResponse timetable = timetableService.getTimetable(user.getId());
+            for (TimetableSlotDto s : timetable.slots()) {
+                if (s.dayOfWeek() == dow && slot.equals(s.slot())) {
+                    if (s.paathshaalaId() == null) return null;
+                    return paathshalaRepository.findById(s.paathshaalaId()).orElse(null);
+                }
+            }
+        }
+        return null;
+    }
+    
+    private TrackingWindowDto computeWindow(com.pathshala.stub.entity.Paathshaala p, int preBuffer, int postBuffer, int fetchInterval) {
+        if (p.getOpeningTime() == null || p.getClosingTime() == null) {
+            return null;
+        }
+        LocalTime start = p.getOpeningTime().minusMinutes(preBuffer);
+        LocalTime end = p.getClosingTime().plusMinutes(postBuffer);
+        return new TrackingWindowDto(start.format(HH_MM), end.format(HH_MM), fetchInterval, p.getId());
+    }
+
+    public int getConfigInt(String key, int defaultValue) {
+        return systemConfigRepository.findById(key)
+                .map(sc -> Integer.parseInt(sc.getValue()))
+                .orElse(defaultValue);
     }
 
     // ── Validation helpers ────────────────────────────────────────────

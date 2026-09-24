@@ -19,9 +19,14 @@ public class AdminSupervisorController {
     private final UserService userService;
     private final com.pathshala.stub.service.PaathshalaService paathshalaService;
 
-    public AdminSupervisorController(UserService userService, com.pathshala.stub.service.PaathshalaService paathshalaService) {
+    private final com.pathshala.stub.service.SupervisorTimetableService timetableService;
+
+    public AdminSupervisorController(UserService userService, 
+                                     com.pathshala.stub.service.PaathshalaService paathshalaService,
+                                     com.pathshala.stub.service.SupervisorTimetableService timetableService) {
         this.userService = userService;
         this.paathshalaService = paathshalaService;
+        this.timetableService = timetableService;
     }
 
     @PostMapping
@@ -68,5 +73,42 @@ public class AdminSupervisorController {
     @GetMapping("/{id}/paathshaalas")
     public java.util.List<PaathshalaResponse> getPaathshaalas(@PathVariable UUID id) {
         return paathshalaService.findBySupervisorId(id);
+    }
+
+    // ── Timetable Endpoints ───────────────────────────────────────────
+
+    @GetMapping("/{id}/timetable")
+    public TimetableResponse getTimetable(@PathVariable UUID id) {
+        return timetableService.getTimetable(id);
+    }
+
+    @PutMapping("/{id}/timetable")
+    public TimetableResponse updateTimetable(
+            @PathVariable UUID id,
+            @RequestBody TimetableResponse request) {
+        return timetableService.updateTimetable(id, request);
+    }
+
+    @PostMapping("/{id}/timetable/overrides")
+    public TimetableOverrideDto setOverride(
+            @PathVariable UUID id,
+            @RequestBody TimetableOverrideDto request) {
+        return timetableService.setOverride(id, request);
+    }
+
+    @DeleteMapping("/{id}/timetable/overrides")
+    public ResponseEntity<Void> deleteOverride(
+            @PathVariable UUID id,
+            @RequestBody TimetableOverrideDeleteRequest request) {
+        timetableService.deleteOverride(id, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/timetable/overrides")
+    public java.util.List<TimetableOverrideDto> getOverrides(
+            @PathVariable UUID id,
+            @RequestParam java.time.LocalDate from,
+            @RequestParam java.time.LocalDate to) {
+        return timetableService.getOverrides(id, from, to);
     }
 }

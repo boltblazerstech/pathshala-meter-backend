@@ -27,14 +27,18 @@ public class AdminLocationController {
     private final PaathshalaRepository paathshalaRepository;
     private final com.pathshala.stub.service.FcmService fcmService;
 
+    private final com.pathshala.stub.repository.GeofenceEventRepository geofenceEventRepository;
+
     public AdminLocationController(LocationPointRepository locationRepository,
                                    UserRepository userRepository,
                                    PaathshalaRepository paathshalaRepository,
-                                   com.pathshala.stub.service.FcmService fcmService) {
+                                   com.pathshala.stub.service.FcmService fcmService,
+                                   com.pathshala.stub.repository.GeofenceEventRepository geofenceEventRepository) {
         this.locationRepository = locationRepository;
         this.userRepository = userRepository;
         this.paathshalaRepository = paathshalaRepository;
         this.fcmService = fcmService;
+        this.geofenceEventRepository = geofenceEventRepository;
     }
 
     /**
@@ -335,5 +339,19 @@ public class AdminLocationController {
                 .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8")
                 .body(csv.toString());
+    }
+
+    @GetMapping("/users/{userId}/geofence-events")
+    public com.pathshala.stub.dto.GeofenceEventResponse getGeofenceEvents(
+            @org.springframework.web.bind.annotation.PathVariable("userId") java.util.UUID userId,
+            @org.springframework.web.bind.annotation.RequestParam("date") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date) {
+
+        List<com.pathshala.stub.entity.GeofenceEvent> events = geofenceEventRepository.findByUserIdAndEventDateOrderByEventTimeAsc(userId, date);
+        
+        List<com.pathshala.stub.dto.GeofenceEventDto> dtos = events.stream().map(e -> 
+            new com.pathshala.stub.dto.GeofenceEventDto(e.getEventType(), e.getEventTime(), e.getPaathshaalaId())
+        ).collect(Collectors.toList());
+
+        return new com.pathshala.stub.dto.GeofenceEventResponse(date, dtos);
     }
 }

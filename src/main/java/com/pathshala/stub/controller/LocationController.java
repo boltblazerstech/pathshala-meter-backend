@@ -24,9 +24,15 @@ public class LocationController {
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
     private final LocationPointRepository repository;
+    private final com.pathshala.stub.repository.UserRepository userRepository;
+    private final com.pathshala.stub.service.GeofenceService geofenceService;
 
-    public LocationController(LocationPointRepository repository) {
+    public LocationController(LocationPointRepository repository,
+                              com.pathshala.stub.repository.UserRepository userRepository,
+                              com.pathshala.stub.service.GeofenceService geofenceService) {
         this.repository = repository;
+        this.userRepository = userRepository;
+        this.geofenceService = geofenceService;
     }
 
     /**
@@ -36,6 +42,7 @@ public class LocationController {
      * received_at is set server-side via @PrePersist — never trusted from client.
      */
     @PostMapping("/batch")
+    @org.springframework.transaction.annotation.Transactional
     public BatchReceiveResponse batchReceive(
             @Valid @RequestBody List<@Valid LocationPointDto> dtos) {
 
@@ -53,6 +60,11 @@ public class LocationController {
         }).collect(Collectors.toList());
 
         repository.saveAll(points);
+        
+        userRepository.findById(userId).ifPresent(user -> {
+            geofenceService.processLocationPoints(user, points);
+        });
+        
         return new BatchReceiveResponse(points.size());
     }
 

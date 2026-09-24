@@ -1,6 +1,5 @@
 package com.pathshala.stub.controller;
 
-import com.pathshala.stub.dto.TrackingWindowResponse;
 import com.pathshala.stub.service.TrackingWindowService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -53,32 +52,32 @@ public class TrackingWindowController {
     }
 
     @GetMapping
-    public ResponseEntity<TrackingWindowResponse> getWindow(
+    public ResponseEntity<com.pathshala.stub.dto.TrackingWindowListResponse> getWindow(
             @RequestParam(required = false) String start,
             @RequestParam(required = false) String end,
             @RequestParam(required = false) Integer interval) {
 
         int healingInterval = getHealingInterval();
 
-        // ── 1. Testing query-param override ────────────────────────────────
+        // ── 1. Testing query-param override ───────────────────────────────
         if (start != null || end != null || interval != null) {
-            return ResponseEntity.ok(new TrackingWindowResponse(
-                    start    != null ? start    : defaultStart,
-                    end      != null ? end      : defaultEnd,
-                    interval != null ? interval : defaultInterval,
-                    healingInterval
-            ));
+            java.util.List<com.pathshala.stub.dto.TrackingWindowDto> singleList = java.util.List.of(
+                    new com.pathshala.stub.dto.TrackingWindowDto(
+                            start    != null ? start    : defaultStart,
+                            end      != null ? end      : defaultEnd,
+                            interval != null ? interval : defaultInterval,
+                            null
+                    )
+            );
+            return ResponseEntity.ok(new com.pathshala.stub.dto.TrackingWindowListResponse(singleList, healingInterval));
         }
 
-        // ── 2. Real DB lookup for the calling user's window ────────────────
+        // ── 2. Derived DB lookup for the calling user's windows ────────────
         UUID userId = UUID.fromString(
                 (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
 
-        return trackingWindowService.findCurrentForUser(userId)
-                .map(resp -> new TrackingWindowResponse(resp.startTime(), resp.endTime(), resp.intervalMinutes(), healingInterval))
-                .map(ResponseEntity::ok)
-                // ── 3. Fall back to application.properties defaults ────────
-                .orElse(ResponseEntity.ok(
-                        new TrackingWindowResponse(defaultStart, defaultEnd, defaultInterval, healingInterval)));
+        java.util.List<com.pathshala.stub.dto.TrackingWindowDto> windows = trackingWindowService.findWindowsForUser(userId);
+        
+        return ResponseEntity.ok(new com.pathshala.stub.dto.TrackingWindowListResponse(windows, healingInterval));
     }
 }
