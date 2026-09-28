@@ -1,5 +1,7 @@
 package com.pathshala.stub.entity;
 
+import org.springframework.data.domain.Persistable;
+
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.Instant;
@@ -7,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "user_geofence_state")
-public class UserGeofenceState {
+public class UserGeofenceState implements Persistable<UUID> {
 
     @Id
     @Column(name = "user_id")
@@ -25,10 +27,30 @@ public class UserGeofenceState {
     @Column(name = "last_updated", nullable = false)
     private Instant lastUpdated;
 
+    @Transient
+    private boolean isNew = false;
+
     public UserGeofenceState() {}
 
     public UserGeofenceState(UUID userId) {
         this.userId = userId;
+        this.isNew = true;
+    }
+
+    @Override
+    public UUID getId() {
+        return userId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostPersist
+    @PostLoad
+    void markNotNew() {
+        this.isNew = false;
     }
 
     public UUID getUserId() { return userId; }

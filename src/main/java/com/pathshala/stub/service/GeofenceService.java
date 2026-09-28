@@ -55,7 +55,6 @@ public class GeofenceService {
             }
 
             Paathshaala targetPaathshaala = trackingWindowService.resolveTargetPaathshaalaForTime(user, point.getCapturedAt());
-            boolean stateChanged = false;
 
             if (user.getHomeLat() != null && user.getHomeLng() != null) {
                 double distanceToHome = GeoUtils.haversineMeters(
@@ -66,15 +65,13 @@ public class GeofenceService {
                 if (state.isAtHome() && distanceToHome > radiusLeaveHome) {
                     recordEvent(user.getId(), "LEFT_HOME", point, null, pointDate);
                     state.setAtHome(false);
-                    stateChanged = true;
                 } else if (!state.isAtHome() && distanceToHome <= radiusReachHome) {
                     recordEvent(user.getId(), "REACHED_HOME", point, null, pointDate);
                     state.setAtHome(true);
-                    stateChanged = true;
                 }
             }
 
-            if (!stateChanged && targetPaathshaala != null && targetPaathshaala.getLatitude() != null && targetPaathshaala.getLongitude() != null) {
+            if (targetPaathshaala != null && targetPaathshaala.getLatitude() != null && targetPaathshaala.getLongitude() != null) {
                 double distanceToSchool = GeoUtils.haversineMeters(
                         point.getLat(), point.getLng(),
                         targetPaathshaala.getLatitude(), targetPaathshaala.getLongitude()
