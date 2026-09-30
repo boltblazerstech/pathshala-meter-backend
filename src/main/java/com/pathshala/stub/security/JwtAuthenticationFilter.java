@@ -43,7 +43,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
+            String token = authHeader.substring(7).trim();
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7).trim();
+            }
 
             if (jwtUtil.isTokenValid(token)) {
                 // sub = user_id or admin_id (UUID string)

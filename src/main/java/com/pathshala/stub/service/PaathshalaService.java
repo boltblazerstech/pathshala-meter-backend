@@ -105,13 +105,8 @@ public class PaathshalaService {
             entity.setName(request.name());
         }
 
-        if (request.supervisorId() != null) {
-            processSupervisor(entity, request.supervisorId());
-        }
-        
-        if (request.openingTime() != null || request.closingTime() != null) {
-            processTimes(entity, request.openingTime(), request.closingTime());
-        }
+        processSupervisor(entity, request.supervisorId());
+        processTimes(entity, request.openingTime(), request.closingTime());
 
         boolean locationChanged = false;
 
